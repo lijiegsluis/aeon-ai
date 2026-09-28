@@ -1,0 +1,426 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── CSS custom properties — mirroring aeonnimbus.com ───────────── */
+:root {
+  --bg:      #0A0A0A;
+  --bg1:     #111114;
+  --bg2:     #16161B;
+  --bg3:     #1C1C22;
+  --gold:    #D4AF37;
+  --gold2:   #F0CF5C;
+  --goldlt:  rgba(212,175,55,.10);
+  --goldrl:  rgba(212,175,55,.18);  /* rule */
+  --ink:     #E8E6DF;
+  --ink2:    #94918C;
+  --ink3:    #6E6B63;
+  --g1:      #9A9490;
+  --g2:      #6A6560;
+  --g3:      #3A3830;
+  --rule:    rgba(212,175,55,.18);
+  --rule2:   rgba(255,255,255,.06);
+  --green:   #00FF88;
+  --red:     #FF0040;
+  --blue:    #00D9FF;
+  --teal:    #2A7A82;
+  --teal2:   #3A9AA4;
+  --ease:    cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
+  /* Houston.tsx legacy vars — bridged to aeonnimbus tokens */
+  --card-bg: var(--bg1);
+  --border:  rgba(212,175,55,0.18);
+  --text:    var(--ink);
+}
+
+/* ─── Base ────────────────────────────────────────────────────────── */
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* Ambient warmth — two soft corner blobs, static (no drift animation —
+     this app's numbers refresh constantly, and Intelligence's moving blobs
+     would fight for attention against live data rather than sit behind it) */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -300px;
+    right: -300px;
+    width: 800px;
+    height: 800px;
+    background: radial-gradient(circle, rgba(212,175,55,0.05) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    bottom: -260px;
+    left: -200px;
+    width: 640px;
+    height: 640px;
+    background: radial-gradient(circle, rgba(0,217,255,0.035) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  #root {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Typographic reset */
+  h1, h2, h3, h4, h5 {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+  }
+
+  h1 { font-size: 2.25rem; }
+  h2 { font-size: 1.5rem; }
+  h3 { font-size: 1.125rem; }
+}
+
+/* ─── Components ──────────────────────────────────────────────────── */
+@layer components {
+
+  /* Card — editorial base, now with Intelligence's rounded-panel gradient */
+  .card {
+    background: linear-gradient(180deg, var(--bg1), var(--bg2));
+    border: 1px solid var(--rule2);
+    border-radius: 10px;
+    transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease), transform 0.2s var(--ease);
+  }
+
+  .card:hover {
+    border-color: var(--rule);
+    box-shadow: 0 4px 32px rgba(0,0,0,0.6), 0 0 20px rgba(212,175,55,0.05);
+    transform: translateY(-2px);
+  }
+
+  /* Glass variant */
+  .card-glass {
+    background: rgba(13,12,16,0.72);
+    border: 1px solid var(--rule2);
+    border-radius: 10px;
+    backdrop-filter: blur(16px);
+  }
+
+  /* Gold-bordered premium card */
+  .card-premium {
+    background: linear-gradient(180deg, var(--bg1), var(--bg2));
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease), transform 0.2s var(--ease);
+  }
+
+  .card-premium:hover {
+    border-color: rgba(212,175,55,0.28);
+    box-shadow: 0 4px 32px rgba(0,0,0,0.6), 0 0 20px rgba(212,175,55,0.08);
+    transform: translateY(-2px);
+  }
+
+  /* Accent card — used for the main ticker strip */
+  .card-cyan {
+    background: linear-gradient(180deg, var(--bg1), var(--bg2));
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+  }
+
+  /* ── Buttons ───────────────────────────────────────────────────── */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 16px;
+    background: var(--gold);
+    color: var(--bg);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: opacity 0.15s var(--ease), transform 0.15s var(--ease);
+  }
+
+  .btn-primary:hover {
+    opacity: 0.88;
+    transform: translateY(-1px);
+  }
+
+  .btn-primary:active { transform: translateY(0); }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 16px;
+    background: transparent;
+    color: var(--ink2);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    border: 1px solid var(--rule2);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s var(--ease), color 0.15s var(--ease);
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--rule);
+    color: var(--ink);
+  }
+
+  .btn-gold {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 16px;
+    background: var(--gold);
+    color: var(--bg);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+
+  .btn-gold:hover { opacity: 0.85; }
+
+  .btn-nebula {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 16px;
+    background: var(--bg2);
+    color: var(--ink2);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    border: 1px solid var(--rule2);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+
+  .btn-nebula:hover { border-color: var(--rule); color: var(--ink); }
+
+  /* ── Inputs ────────────────────────────────────────────────────── */
+  .input-field {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--rule2);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--ink);
+    transition: border-color 0.15s var(--ease);
+    outline: none;
+  }
+
+  .input-field::placeholder { color: var(--ink3); }
+
+  .input-field:focus {
+    border-color: var(--goldrl);
+    box-shadow: 0 0 0 1px rgba(212,175,55,0.08);
+  }
+
+  /* ── Badges ────────────────────────────────────────────────────── */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 9px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    border-radius: 999px;
+  }
+
+  .badge-accent {
+    @apply badge;
+    background: var(--goldlt);
+    color: var(--gold2);
+    border: 1px solid var(--rule);
+  }
+
+  .badge-nebula {
+    @apply badge;
+    background: rgba(42,122,130,0.12);
+    color: var(--teal2);
+    border: 1px solid rgba(42,122,130,0.20);
+  }
+
+  .badge-gold {
+    @apply badge;
+    background: var(--goldlt);
+    color: var(--gold2);
+    border: 1px solid var(--rule);
+  }
+
+  .badge-success {
+    @apply badge;
+    background: rgba(62,175,114,0.12);
+    color: #5DC98E;
+    border: 1px solid rgba(62,175,114,0.22);
+  }
+
+  .badge-warning {
+    @apply badge;
+    background: var(--goldlt);
+    color: var(--gold2);
+    border: 1px solid var(--rule);
+  }
+
+  .badge-danger {
+    @apply badge;
+    background: rgba(220,85,85,0.12);
+    color: #F07070;
+    border: 1px solid rgba(220,85,85,0.22);
+  }
+
+  /* ── Score bar ─────────────────────────────────────────────────── */
+  .score-bar {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--rule2);
+    overflow: hidden;
+  }
+
+  .score-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--gold), var(--gold2));
+    box-shadow: 0 0 8px rgba(212,175,55,0.45);
+    transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* ── Grade display ─────────────────────────────────────────────── */
+  .grade-display {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-weight: 700;
+    color: var(--gold);
+  }
+
+  /* ── Section labels — institutional mono uppercase ─────────────── */
+  .section-heading {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink3);
+  }
+
+  /* ── Stat typography ───────────────────────────────────────────── */
+  .stat-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    color: var(--ink3);
+  }
+
+  .stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  /* ── Divider ───────────────────────────────────────────────────── */
+  .divider-nebula {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--rule), transparent);
+  }
+}
+
+/* ─── Utilities ───────────────────────────────────────────────────── */
+@layer utilities {
+  .text-gradient {
+    color: var(--gold);
+  }
+
+  .text-gradient-hero {
+    background: linear-gradient(135deg, var(--ink) 0%, var(--gold2) 60%, var(--gold) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-gold {
+    background: linear-gradient(135deg, var(--gold2), var(--gold));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-nebula {
+    color: var(--teal2);
+  }
+
+  /* Card / focus gold ring */
+  .ring-cyan-glow {
+    box-shadow: 0 0 0 1px rgba(212,175,55,0.30);
+  }
+
+  .ring-nebula-glow {
+    box-shadow: 0 0 0 1px rgba(42,122,130,0.30);
+  }
+
+  .border-gradient {
+    border-color: var(--rule);
+  }
+
+  /* Text color helpers using CSS vars */
+  .text-accent   { color: var(--gold); }
+  .text-ink      { color: var(--ink); }
+  .text-ink2     { color: var(--ink2); }
+  .text-ink3     { color: var(--ink3); }
+  .text-emerald  { color: var(--green); }
+  .text-rose     { color: var(--red); }
+  .text-sky      { color: var(--blue); }
+  .bg-surface    { background: var(--bg); }
+  .bg-surface-raised   { background: var(--bg1); }
+  .bg-surface-elevated { background: var(--bg2); }
+}
+
+/* ─── Scrollbar ───────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--g3); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gold); }
+
+/* ─── Selection ───────────────────────────────────────────────────── */
+::selection {
+  background: rgba(212,175,55,0.25);
+  color: var(--ink);
+}
+
+/* ─── Focus visible ───────────────────────────────────────────────── */
+:focus-visible {
+  outline: 1px solid rgba(212,175,55,0.5);
+  outline-offset: 2px;
+}

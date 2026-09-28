@@ -1,0 +1,7 @@
+# Files that must never leave this machine (personal Telegram API credentials) or aren't needed in the image.
+telegram_config.ini
+*.ini
+*.session
+.env
+__pycache__/
+*.pyc

@@ -1,0 +1,9 @@
+# Files that must never leave this machine (live Telegram login) or aren't needed in the image.
+aeon_intelligence_telegram.session
+*.session
+*.ini
+.env
+__pycache__/
+*.pyc
+archive/
+backtest_cache.json

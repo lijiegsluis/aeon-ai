@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+requests
+aiohttp
+feedparser
+beautifulsoup4
+lxml
+python-dotenv
+telethon

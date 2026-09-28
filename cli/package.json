@@ -1,0 +1,28 @@
+{
+    "name": "aeon-ai",
+    "version": "1.1.1",
+    "description": "The Open-Source Bloomberg Alternative — 55+ data dimensions, 5 AI models, zero cost. Run locally with one command.",
+    "bin": {
+        "aeon-ai": "./bin/aeon-ai.js"
+    },
+    "keywords": [
+        "finance",
+        "stock-analysis",
+        "ai",
+        "bloomberg",
+        "investment",
+        "financial-analysis",
+        "open-source",
+        "cloudflare-workers"
+    ],
+    "author": "RTN Labs (https://github.com/myProjectsRavi)",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/myProjectsRavi/Nipun-AI"
+    },
+    "homepage": "https://github.com/myProjectsRavi/Nipun-AI",
+    "engines": {
+        "node": ">=18.0.0"
+    }
+}

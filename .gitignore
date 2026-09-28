@@ -1,0 +1,24 @@
+node_modules/
+dist/
+.wrangler/
+.env
+*.log
+.DS_Store
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+*.egg-info/
+
+# Third-party vendored clones/SDKs/binaries (~11GB: Qt, OpenBB, FinRobot, venvs,
+# .dmg installers) — not our source, never meant to be tracked in this repo.
+vendor/
+# Large marketing/demo media, not source.
+demo-video/
+
+# Live personal credentials — Telegram API_ID/API_HASH configs and authenticated
+# Telethon session files. Never commit these; they're per-machine logins, not source.
+*.session
+*.session-journal
+*.ini

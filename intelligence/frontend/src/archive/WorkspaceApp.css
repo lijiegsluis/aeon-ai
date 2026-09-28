@@ -1,0 +1,558 @@
+/* Workspace App - Tradeul-inspired Terminal Design */
+
+.workspace-app {
+  width: 100%;
+  height: 100vh;
+  background: #000000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+}
+
+/* ============================================
+   WORKSPACE HEADER
+   ============================================ */
+
+.workspace-header {
+  background: linear-gradient(180deg, #1a1a1a 0%, #000000 100%);
+  border-bottom: 1px solid rgba(0, 217, 255, 0.2);
+  padding: 12px 24px;
+  flex-shrink: 0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+}
+
+.workspace-header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 32px;
+}
+
+.logo-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo {
+  font-size: 24px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--gold-light), var(--gold-primary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  font-size: 11px;
+  color: var(--cyan-accent);
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  background: rgba(0, 217, 255, 0.1);
+  border: 1px solid rgba(0, 217, 255, 0.3);
+  border-radius: 0;
+  font-family: 'SF Mono', 'Monaco', monospace;
+}
+
+.stats-bar {
+  display: flex;
+  gap: 24px;
+  padding: 8px 16px;
+  background: rgba(0, 217, 255, 0.05);
+  border: 1px solid rgba(0, 217, 255, 0.2);
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 0 16px;
+  border-right: 1px solid rgba(0, 217, 255, 0.2);
+}
+
+.stat-item:last-child {
+  border-right: none;
+}
+
+.stat-label {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  font-family: 'SF Mono', monospace;
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--cyan-accent);
+  font-variant-numeric: tabular-nums;
+  font-family: 'SF Mono', monospace;
+}
+
+.window-controls-bar {
+  display: flex;
+  gap: 8px;
+}
+
+.window-toggle {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  padding: 8px 16px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'SF Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.window-toggle:hover {
+  border-color: rgba(0, 217, 255, 0.5);
+  background: rgba(0, 217, 255, 0.05);
+  color: var(--cyan-accent);
+}
+
+.window-toggle.active {
+  border-color: var(--cyan-accent);
+  background: rgba(0, 217, 255, 0.1);
+  color: var(--cyan-accent);
+  box-shadow: 0 0 10px rgba(0, 217, 255, 0.2);
+}
+
+.window-toggle-icon {
+  font-size: 14px;
+}
+
+.window-toggle-label {
+  font-size: 10px;
+}
+
+/* ============================================
+   WORKSPACE CANVAS
+   ============================================ */
+
+.workspace-canvas {
+  flex: 1;
+  position: relative;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 49px,
+      rgba(0, 217, 255, 0.03) 49px,
+      rgba(0, 217, 255, 0.03) 50px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 49px,
+      rgba(0, 217, 255, 0.03) 49px,
+      rgba(0, 217, 255, 0.03) 50px
+    ),
+    #000000;
+  overflow: hidden;
+}
+
+/* ============================================
+   WINDOW CONTENT STYLES
+   ============================================ */
+
+.window-events,
+.window-news,
+.window-chat {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Terminal Table */
+.terminal-table {
+  width: 100%;
+  overflow: auto;
+}
+
+.terminal-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
+  font-size: 12px;
+}
+
+.terminal-table thead {
+  position: sticky;
+  top: 0;
+  background: #000000;
+  z-index: 1;
+}
+
+.terminal-table th {
+  color: var(--cyan-accent);
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  text-align: left;
+  padding: 12px 12px;
+  border-bottom: 2px solid rgba(0, 217, 255, 0.3);
+}
+
+.terminal-table td {
+  padding: 12px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.terminal-table tbody tr {
+  transition: background 0.15s ease;
+}
+
+.terminal-table tbody tr:hover {
+  background: rgba(0, 217, 255, 0.05);
+}
+
+.mono-cell {
+  font-family: 'SF Mono', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.cyan-text {
+  color: var(--cyan-accent);
+  font-weight: 600;
+}
+
+.event-title-cell {
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.category-cell {
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+}
+
+.impact-bar {
+  width: 60px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.impact-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--cyan-accent), var(--cyan-light));
+  transition: width 0.3s ease;
+}
+
+.phase-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid currentColor;
+}
+
+/* News Feed */
+.news-feed {
+  overflow-y: auto;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.news-feed-item {
+  padding: 16px;
+  background: rgba(0, 217, 255, 0.03);
+  border: 1px solid rgba(0, 217, 255, 0.1);
+  transition: all 0.2s ease;
+}
+
+.news-feed-item:hover {
+  background: rgba(0, 217, 255, 0.08);
+  border-color: rgba(0, 217, 255, 0.3);
+}
+
+.news-feed-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.news-feed-source {
+  font-size: 10px;
+  color: var(--gold-primary);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-family: 'SF Mono', monospace;
+}
+
+.news-feed-time {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  font-family: 'SF Mono', monospace;
+}
+
+.news-feed-title {
+  font-size: 13px;
+  color: var(--text-primary);
+  line-height: 1.5;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.news-feed-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sentiment-badge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid currentColor;
+  font-family: 'SF Mono', monospace;
+}
+
+.sentiment-score {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-family: 'SF Mono', monospace;
+  font-weight: 600;
+}
+
+/* Chat Interface */
+.window-chat {
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.chat-message {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.chat-message.user {
+  color: var(--cyan-accent);
+}
+
+.chat-message.assistant {
+  color: var(--text-primary);
+}
+
+.chat-message-role {
+  font-family: 'SF Mono', monospace;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+  width: 20px;
+}
+
+.chat-message-content {
+  flex: 1;
+  word-wrap: break-word;
+}
+
+.chat-input-form {
+  display: flex;
+  gap: 8px;
+  padding: 16px;
+  border-top: 1px solid rgba(0, 217, 255, 0.2);
+  background: rgba(0, 217, 255, 0.03);
+}
+
+.chat-input {
+  flex: 1;
+  background: #000000;
+  border: 1px solid rgba(0, 217, 255, 0.3);
+  color: var(--text-primary);
+  padding: 10px 16px;
+  font-size: 13px;
+  font-family: 'SF Mono', monospace;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.chat-input:focus {
+  border-color: var(--cyan-accent);
+  box-shadow: 0 0 0 2px rgba(0, 217, 255, 0.1);
+}
+
+.chat-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.chat-submit {
+  background: var(--cyan-accent);
+  border: none;
+  color: #000000;
+  padding: 10px 20px;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'SF Mono', monospace;
+}
+
+.chat-submit:hover {
+  background: var(--cyan-light);
+  box-shadow: 0 0 20px rgba(0, 217, 255, 0.4);
+}
+
+.chat-submit:active {
+  transform: scale(0.95);
+}
+
+/* ============================================
+   STATUS BAR
+   ============================================ */
+
+.workspace-status-bar {
+  background: linear-gradient(180deg, #000000 0%, #1a1a1a 100%);
+  border-top: 1px solid rgba(0, 217, 255, 0.2);
+  padding: 8px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  font-family: 'SF Mono', monospace;
+  flex-shrink: 0;
+}
+
+.status-left,
+.status-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+}
+
+.status-indicator.active {
+  background: var(--cyan-accent);
+  box-shadow: 0 0 10px var(--cyan-accent);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.status-text {
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+
+/* ============================================
+   SCROLLBAR STYLING
+   ============================================ */
+
+.workspace-app ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.workspace-app ::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.workspace-app ::-webkit-scrollbar-thumb {
+  background: rgba(0, 217, 255, 0.3);
+  border-radius: 0;
+}
+
+.workspace-app ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 217, 255, 0.5);
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(0, 217, 255, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(0, 217, 255, 0.4);
+  }
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 1600px) {
+  .workspace-header-content {
+    flex-wrap: wrap;
+  }
+
+  .window-toggle-label {
+    display: none;
+  }
+}
+
+@media (max-width: 1200px) {
+  .stats-bar {
+    display: none;
+  }
+}
