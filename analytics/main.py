@@ -18,9 +18,12 @@ import numpy as np
 import pandas as pd
 import requests as http
 import yfinance as yf
-from fastapi import FastAPI, HTTPException, Depends
+from curl_cffi.curl import CurlError
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from yfinance.exceptions import YFException, YFPricesMissingError, YFTickerMissingError
 
 from database import (
     save_analysis, get_analysis_history, save_watchlist, get_watchlists,
@@ -48,6 +51,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Yahoo throttles/blocks cloud IPs often. Handling these here (inside the CORS
+# middleware) turns a bare 500 with no CORS headers into a readable 503/404.
+async def _upstream_unavailable(request: Request, exc: Exception):
+    return JSONResponse(status_code=503, content={"detail": "Market data provider unavailable, please retry shortly"})
+
+
+async def _ticker_not_found(request: Request, exc: Exception):
+    return JSONResponse(status_code=404, content={"detail": "no data for ticker"})
+
+
+for _exc in (CurlError, http.RequestException, YFException):
+    app.add_exception_handler(_exc, _upstream_unavailable)
+for _exc in (YFTickerMissingError, YFPricesMissingError):
+    app.add_exception_handler(_exc, _ticker_not_found)
+
 
 @app.on_event("startup")
 def _seed_market_events():
@@ -920,6 +940,8 @@ PLATFORM_DB  = os.path.expanduser(
 def houston_run():
     """Run houston.py and return the saved brief as text."""
     import subprocess, datetime
+    if not (os.path.exists(HOUSTON_PY) and os.path.exists(HOUSTON_VENV)):
+        raise HTTPException(503, "Houston runner is only available on the research workstation")
     day = datetime.date.today().isoformat()
     result = subprocess.run(
         [HOUSTON_VENV, HOUSTON_PY],
@@ -1092,6 +1114,9 @@ def get_market_events(limit: int = 100, category: Optional[str] = None):
 def create_market_event(event: dict):
     """Create new market event"""
     from database import get_db
+    missing = [k for k in ("title", "category", "event_date") if not event.get(k)]
+    if missing:
+        raise HTTPException(422, f"missing required field(s): {', '.join(missing)}")
     with get_db() as conn:
         cursor = conn.execute("""
             INSERT INTO market_events (title, category, event_date, affected_assets, raw_text)
