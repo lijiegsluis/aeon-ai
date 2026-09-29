@@ -3,6 +3,7 @@
  */
 import { useState, useEffect } from 'react';
 import { ErrorNote } from './Terminal';
+import { ANALYTICS_URL } from '../config';
 
 interface Watchlist {
     id: number;
@@ -32,7 +33,7 @@ export default function WatchlistManager() {
 
     const loadWatchlists = async () => {
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/watchlists?user_id=1');
+            const res = await fetch(`${ANALYTICS_URL}/api/watchlists?user_id=1`);
             const data = await res.json();
             setWatchlists(data.watchlists);
             setErr('');
@@ -46,7 +47,7 @@ export default function WatchlistManager() {
         if (!name || tickerList.length === 0) return;
 
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/watchlists', {
+            const res = await fetch(`${ANALYTICS_URL}/api/watchlists`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name, tickers: tickerList, user_id: 1 }),
@@ -65,7 +66,7 @@ export default function WatchlistManager() {
         setAnalyzing(id);
         setBulkResults([]);
         try {
-            const res = await fetch(`http://127.0.0.1:8000/api/watchlists/${id}/analyze`, { method: 'POST' });
+            const res = await fetch(`${ANALYTICS_URL}/api/watchlists/${id}/analyze`, { method: 'POST' });
             if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || res.statusText);
             const data = await res.json();
             setBulkResults(data.results);

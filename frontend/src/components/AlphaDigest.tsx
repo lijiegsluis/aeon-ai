@@ -12,8 +12,9 @@ import { useStore } from '../store';
 import { jget, jpost } from '../utils/api';
 import { ErrorNote, VaultKeyStatus, SourceBadge } from './Terminal';
 import { SectionCard } from './report/shared';
+import { ANALYTICS_URL } from '../config';
 
-const AEON = 'http://127.0.0.1:8000';
+const AEON = ANALYTICS_URL;
 
 type DcfResp = {
     price: number; wacc: number; terminalGrowth: number; methodology: string;

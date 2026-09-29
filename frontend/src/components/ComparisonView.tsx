@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useStore } from '../store';
 import { ErrorNote } from './Terminal';
+import { ANALYTICS_URL } from '../config';
 
 interface CompareData {
     ticker: string;
@@ -42,7 +43,7 @@ export default function ComparisonView() {
         if (tickers.length === 0) return;
         setLoading(true);
         setErr('');
-        fetch('http://127.0.0.1:8000/api/compare', {
+        fetch(`${ANALYTICS_URL}/api/compare`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ tickers }),

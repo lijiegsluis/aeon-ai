@@ -7,8 +7,9 @@ import { useEffect, useState } from 'react';
 import { jget, jpost } from '../utils/api';
 import { ErrorNote } from './Terminal';
 import { SectionCard } from './report/shared';
+import { ANALYTICS_URL } from '../config';
 
-const AN = 'http://127.0.0.1:8000';
+const AN = ANALYTICS_URL;
 
 // ── Brief panel ───────────────────────────────────────────────────────────────
 

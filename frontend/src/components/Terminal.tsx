@@ -14,8 +14,9 @@ import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'rec
 import { useStore } from '../store';
 import { jget, jpost } from '../utils/api';
 import { getSource } from '../dataProvenance';
+import { ANALYTICS_URL } from '../config';
 
-const AEON = 'http://127.0.0.1:8000';
+const AEON = ANALYTICS_URL;
 const OPENBB = 'http://127.0.0.1:6900';
 const TA = 'http://127.0.0.1:8001';
 export const FINROBOT_URL = 'http://127.0.0.1:8002';

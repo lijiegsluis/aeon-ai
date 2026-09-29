@@ -7,6 +7,7 @@ import {
     clearStoredKeys,
     type APIKeys,
 } from '../utils/crypto';
+import { ANALYTICS_URL } from '../config';
 
 const KEY_PROVIDERS = [
     {
@@ -88,7 +89,7 @@ const KEY_PROVIDERS = [
  * .env) so the whole terminal feels like one product instead of five. */
 async function syncKeysToEngines(keys: APIKeys) {
     try {
-        await fetch('http://127.0.0.1:8000/system/sync-keys', {
+        await fetch(`${ANALYTICS_URL}/system/sync-keys`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

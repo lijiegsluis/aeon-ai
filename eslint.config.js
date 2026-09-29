@@ -31,6 +31,12 @@ export default tseslint.config(
         },
     },
 
+    /* ── CLI (Node) ────────────────────────────────────────── */
+    {
+        files: ['cli/**/*.js'],
+        languageOptions: { globals: globals.node },
+    },
+
     /* ── Shared rules ──────────────────────────────────────── */
     {
         rules: {

@@ -4,6 +4,7 @@
  */
 import { useState, useEffect } from 'react';
 import { ErrorNote } from './Terminal';
+import { ANALYTICS_URL } from '../config';
 
 interface Alert {
     id: number;
@@ -39,7 +40,7 @@ export default function AlertsManager() {
 
     const loadAlerts = async () => {
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/alerts');
+            const res = await fetch(`${ANALYTICS_URL}/api/alerts`);
             const data = await res.json();
             setAlerts(data.alerts);
             setErr('');
@@ -50,7 +51,7 @@ export default function AlertsManager() {
 
     const createAlert = async () => {
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/alerts', {
+            const res = await fetch(`${ANALYTICS_URL}/api/alerts`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -72,7 +73,7 @@ export default function AlertsManager() {
 
     const deactivateAlert = async (id: number) => {
         try {
-            const res = await fetch(`http://127.0.0.1:8000/api/alerts/${id}/deactivate`, { method: 'POST' });
+            const res = await fetch(`${ANALYTICS_URL}/api/alerts/${id}/deactivate`, { method: 'POST' });
             if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || res.statusText);
             setErr('');
             loadAlerts();
@@ -83,7 +84,7 @@ export default function AlertsManager() {
 
     const checkAlerts = async () => {
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/alerts/check', { method: 'POST' });
+            const res = await fetch(`${ANALYTICS_URL}/api/alerts/check`, { method: 'POST' });
             const data = await res.json();
 
             if (data.triggered.length > 0 && notificationsEnabled) {

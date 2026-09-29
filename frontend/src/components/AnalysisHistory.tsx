@@ -4,6 +4,7 @@
  */
 import { useState, useEffect } from 'react';
 import { useStore } from '../store';
+import { ANALYTICS_URL } from '../config';
 
 interface HistoryItem {
     id: number;
@@ -22,7 +23,7 @@ export default function AnalysisHistory() {
 
     const loadHistory = async () => {
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/analyses/history?user_id=1&limit=100');
+            const res = await fetch(`${ANALYTICS_URL}/api/analyses/history?user_id=1&limit=100`);
             const data = await res.json();
             setHistory(data.history);
         } catch (e) {
@@ -32,7 +33,7 @@ export default function AnalysisHistory() {
 
     const replayAnalysis = async (id: number) => {
         try {
-            const res = await fetch(`http://127.0.0.1:8000/api/analyses/${id}`);
+            const res = await fetch(`${ANALYTICS_URL}/api/analyses/${id}`);
             const data = await res.json();
             // Load into store
             useStore.setState({ result: data.result, view: 'report' });

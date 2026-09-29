@@ -29,7 +29,7 @@ export default function CommandPalette({ tabs }: { tabs: { id: string; label: st
             { id: 'about', icon: '✦', label: 'About & Licenses', hint: 'info',
               run: () => setActiveTab('about') },
         ];
-        if (q && /^[A-Za-z.\-]{1,10}$/.test(q.trim())) {
+        if (q && /^[A-Za-z0-9.-]{1,10}$/.test(q.trim())) {
             actions.unshift({
                 id: 'ticker', icon: '🎯', label: `Set ticker to ${q.trim().toUpperCase()}`, hint: 'enter',
                 run: () => setTicker(q.trim()),

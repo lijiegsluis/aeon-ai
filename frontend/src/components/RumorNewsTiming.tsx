@@ -10,6 +10,7 @@
 import { useState, useEffect } from 'react';
 import { ErrorNote } from './Terminal';
 import { SectionCard } from './report/shared';
+import { ANALYTICS_URL } from '../config';
 
 interface Event {
     id: number;
@@ -46,7 +47,7 @@ export default function RumorNewsTiming() {
 
     const loadEvents = async () => {
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/market-events');
+            const res = await fetch(`${ANALYTICS_URL}/api/market-events`);
             if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || res.statusText);
             const data = await res.json();
             setEvents(data.events?.length ? data.events : getSampleEvents());
@@ -60,7 +61,7 @@ export default function RumorNewsTiming() {
     const addEvent = async () => {
         const assets = newEvent.affected_assets.split(',').map(a => a.trim().toUpperCase());
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/market-events', {
+            const res = await fetch(`${ANALYTICS_URL}/api/market-events`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

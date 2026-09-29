@@ -9,8 +9,9 @@ import { useEffect, useRef, useState } from 'react';
 import { ErrorNote, humanizeErr, ProgressBar, useVaultKey, VaultKeyStatus } from './Terminal';
 import { useStore } from '../store';
 import { jget, jpost } from '../utils/api';
+import { ANALYTICS_URL } from '../config';
 
-const AEON = 'http://127.0.0.1:8000';
+const AEON = ANALYTICS_URL;
 
 type Ensemble = {
     price: number; consensus: number; consensusUpside: number;
