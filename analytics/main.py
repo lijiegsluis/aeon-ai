@@ -38,6 +38,8 @@ _DEFAULT_ORIGINS = [
     "http://localhost:5177", "http://127.0.0.1:5177",
     "http://localhost:5180", "http://127.0.0.1:5180",
     "http://localhost:5178", "http://127.0.0.1:5178",
+    "https://aeon-ai-1.onrender.com", "https://aeon-ai-2.onrender.com", "https://aeon-ai-3.onrender.com",
+    "https://aeon-platform.onrender.com", "https://aeon-nimbus.onrender.com",
 ]
 _EXTRA_ORIGINS = [o.strip() for o in os.environ.get("AEON_ANALYTICS_ALLOWED_ORIGINS", "").split(",") if o.strip()]
 app.add_middleware(
