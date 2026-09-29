@@ -62,13 +62,36 @@ CREATE TABLE IF NOT EXISTS prediction_resolutions (
     correct INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_pred_res_resolve ON prediction_resolutions(resolve_at, resolved_at);
+CREATE TABLE IF NOT EXISTS daily_briefs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    brief_date TEXT NOT NULL,
+    content_json TEXT NOT NULL,
+    generated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS sentiment_snapshots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticker TEXT,
+    sector TEXT,
+    sentiment_score REAL,
+    confidence REAL,
+    sources_json TEXT,
+    snapshot_at TEXT NOT NULL
+);
 """
 
 
 @contextmanager
 def _conn():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(DB_PATH), timeout=10)
+    # WAL mode matters here because this file is shared with intelligence_service.py's
+    # get_db(), and several independent threads hit both at once on startup - without
+    # it, SQLite's default locking was failing init()'s CREATE TABLE outright with
+    # "database is locked", so every save_*/get_*_since after it hit "no such table"
+    # for the rest of the process's life.
+    conn = sqlite3.connect(str(DB_PATH), timeout=15)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=15000")
     try:
         yield conn
         conn.commit()

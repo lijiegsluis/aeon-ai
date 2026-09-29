@@ -61,7 +61,17 @@ DB_PATH = os.environ.get("AEON_INTEL_DB_PATH", os.path.expanduser("~/.aeon/intel
 @contextmanager
 def get_db():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    # WAL mode + a real busy_timeout matter here because this file is shared with
+    # history_db.py, and both are hit by several independent threads at once on
+    # startup (this thread, sync_real_data, alpha_engine, the telegram backfill's
+    # save callback). Without WAL, SQLite's default rollback-journal locking was
+    # failing outright with "database is locked" during that startup burst, which
+    # meant init() never created its tables and every save_* after it silently
+    # no-opped for the rest of the process's life - not a data-availability issue,
+    # a schema-never-created one.
+    conn = sqlite3.connect(DB_PATH, timeout=15)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=15000")
     conn.row_factory = sqlite3.Row
     try:
         yield conn
@@ -811,25 +821,49 @@ def _populate_intel_data():
 
     try:
         history_db.init()
-        NEWS = generate_news()
-        CRYPTO = generate_crypto()
-        SENTIMENT = generate_sentiment()
-        INSIDER_TRADES, insider_trades_are_real = generate_insider_trades()
-        SIGNALS = generate_signals()
-        SMART_MONEY_NOTIFICATIONS = generate_smart_money_notifications()
+    except Exception as e:
+        print(f"[intel_data] history_db.init failed: {e}")
 
+    try:
+        NEWS = generate_news()
+        history_db.save_news_items(NEWS)
+    except Exception as e:
+        print(f"[intel_data] news population failed, keeping honest empty defaults: {e}")
+    try:
+        CRYPTO = generate_crypto()
+    except Exception as e:
+        print(f"[intel_data] crypto population failed, keeping honest empty defaults: {e}")
+    try:
+        SENTIMENT = generate_sentiment()
+        history_db.save_sentiment_snapshot(SENTIMENT)
+    except Exception as e:
+        print(f"[intel_data] sentiment population failed, keeping honest empty defaults: {e}")
+    # This save must not be skipped just because a later, unrelated step (AI
+    # predictions/brief) throws - it used to live in the same try block as those,
+    # so a flaky LLM call silently discarded already-fetched real insider trades.
+    try:
+        INSIDER_TRADES, insider_trades_are_real = generate_insider_trades()
+        if insider_trades_are_real:
+            history_db.save_insider_trades(INSIDER_TRADES)
+    except Exception as e:
+        print(f"[intel_data] insider trades population failed, keeping honest empty defaults: {e}")
+    try:
+        SIGNALS = generate_signals()
+    except Exception as e:
+        print(f"[intel_data] signals population failed, keeping honest empty defaults: {e}")
+    try:
+        SMART_MONEY_NOTIFICATIONS = generate_smart_money_notifications()
+    except Exception as e:
+        print(f"[intel_data] smart money population failed, keeping honest empty defaults: {e}")
+    try:
         context = _build_ai_context()
         AI_PREDICTIONS = _persist_and_annotate_predictions(generate_ai_predictions(context))
         DAILY_BRIEF = generate_daily_brief(context)
-
         history_db.save_daily_brief(DAILY_BRIEF)
-        history_db.save_sentiment_snapshot(SENTIMENT)
-        history_db.save_news_items(NEWS)
-        if insider_trades_are_real:
-            history_db.save_insider_trades(INSIDER_TRADES)
-        print("[intel_data] initial population complete")
     except Exception as e:
-        print(f"[intel_data] initial population failed, keeping honest empty defaults: {e}")
+        print(f"[intel_data] AI predictions/brief population failed, keeping honest empty defaults: {e}")
+
+    print("[intel_data] initial population complete")
 
 
 _FAST_REFRESH_SECONDS = 600   # ~10 min: news / sentiment / crypto / signals
