@@ -1,82 +1,69 @@
 {
-  "result": {
-    "methodology": "Tests two real, mechanical signals from the live Insider Trading logic against what the stock actually did afterward - not a backtest of the free-tier LLM's live grounded predictions (those are generated fresh each time and there is no stored point-in-time data to replay them against). signal 'single_buy': every real SEC Form 4 officer/director buy found in the window. signal 'cluster_buy': 2+ distinct insiders buying the same stock within 7 days (the highest-conviction version of the same signal). For each real historical occurrence, this measures the stock's actual forward return using real historical closing prices.",
-    "universe": [
-      "NVDA",
-      "AAPL",
-      "MSFT",
-      "GOOGL",
-      "META",
-      "TSLA",
-      "AMD",
-      "AMZN",
-      "ORCL",
-      "COIN",
-      "SQ",
-      "SHOP"
-    ],
-    "period": {
-      "start": "2026-04-01",
-      "end": "2026-09-28",
-      "days": 180
-    },
-    "filings_checked": 208,
-    "signals": {
-      "single_buy": {
-        "events_found": 1,
-        "by_horizon": {
-          "5d": {
-            "signals_tested": 0,
-            "pct_positive": null,
-            "avg_return_pct": null
-          },
-          "10d": {
-            "signals_tested": 0,
-            "pct_positive": null,
-            "avg_return_pct": null
-          },
-          "20d": {
-            "signals_tested": 0,
-            "pct_positive": null,
-            "avg_return_pct": null
-          },
-          "30d": {
-            "signals_tested": 0,
-            "pct_positive": null,
-            "avg_return_pct": null
-          }
+    "result": {
+        "methodology": "Tests two real, mechanical signals from the live Insider Trading logic against what the stock actually did afterward - not a backtest of the free-tier LLM's live grounded predictions (those are generated fresh each time and there is no stored point-in-time data to replay them against). signal 'single_buy': every real SEC Form 4 officer/director buy found in the window. signal 'cluster_buy': 2+ distinct insiders buying the same stock within 7 days (the highest-conviction version of the same signal). For each real historical occurrence, this measures the stock's actual forward return using real historical closing prices.",
+        "universe": ["NVDA", "AAPL", "MSFT", "GOOGL", "META", "TSLA", "AMD", "AMZN", "ORCL", "COIN", "SQ", "SHOP"],
+        "period": {
+            "start": "2026-04-01",
+            "end": "2026-09-28",
+            "days": 180
         },
-        "sample_events": []
-      },
-      "cluster_buy": {
-        "events_found": 0,
-        "by_horizon": {
-          "5d": {
-            "signals_tested": 0,
-            "pct_positive": null,
-            "avg_return_pct": null
-          },
-          "10d": {
-            "signals_tested": 0,
-            "pct_positive": null,
-            "avg_return_pct": null
-          },
-          "20d": {
-            "signals_tested": 0,
-            "pct_positive": null,
-            "avg_return_pct": null
-          },
-          "30d": {
-            "signals_tested": 0,
-            "pct_positive": null,
-            "avg_return_pct": null
-          }
+        "filings_checked": 208,
+        "signals": {
+            "single_buy": {
+                "events_found": 1,
+                "by_horizon": {
+                    "5d": {
+                        "signals_tested": 0,
+                        "pct_positive": null,
+                        "avg_return_pct": null
+                    },
+                    "10d": {
+                        "signals_tested": 0,
+                        "pct_positive": null,
+                        "avg_return_pct": null
+                    },
+                    "20d": {
+                        "signals_tested": 0,
+                        "pct_positive": null,
+                        "avg_return_pct": null
+                    },
+                    "30d": {
+                        "signals_tested": 0,
+                        "pct_positive": null,
+                        "avg_return_pct": null
+                    }
+                },
+                "sample_events": []
+            },
+            "cluster_buy": {
+                "events_found": 0,
+                "by_horizon": {
+                    "5d": {
+                        "signals_tested": 0,
+                        "pct_positive": null,
+                        "avg_return_pct": null
+                    },
+                    "10d": {
+                        "signals_tested": 0,
+                        "pct_positive": null,
+                        "avg_return_pct": null
+                    },
+                    "20d": {
+                        "signals_tested": 0,
+                        "pct_positive": null,
+                        "avg_return_pct": null
+                    },
+                    "30d": {
+                        "signals_tested": 0,
+                        "pct_positive": null,
+                        "avg_return_pct": null
+                    }
+                },
+                "sample_events": []
+            }
         },
-        "sample_events": []
-      }
-    },
-    "computed_at": "2026-09-28T02:02:42.850219",
-    "data_sources": "Real SEC Form 4 filing history (data.sec.gov) + real historical daily closes (Yahoo Finance)",
-    "caveat": "Small sample size for a handful of large-cap tickers over 6 months - read percentages as directional, not a statistically robust edge. This does not measure the accuracy of the live LLM-generated predictions themselves."
-  }
+        "computed_at": "2026-09-28T02:02:42.850219",
+        "data_sources": "Real SEC Form 4 filing history (data.sec.gov) + real historical daily closes (Yahoo Finance)",
+        "caveat": "Small sample size for a handful of large-cap tickers over 6 months - read percentages as directional, not a statistically robust edge. This does not measure the accuracy of the live LLM-generated predictions themselves."
+    }
 }

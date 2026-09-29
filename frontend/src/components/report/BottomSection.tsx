@@ -18,12 +18,15 @@ export function BottomSection({ result }: { result: AnalysisResponse }) {
                                 null,
                                 { l: 'AI Model 2', v: result.aiConsensus.secondaryVerdict },
                             ].map((item, i) => {
-                                if (i === 1) return (
-                                    <div key="ag" className="rounded-xl border border-accent/20 bg-accent/5 p-3 text-center">
-                                        <div className="stat-label mb-1">Agreement</div>
-                                        <div className="font-mono text-xl font-bold text-accent">{result.aiConsensus!.agreementScore}%</div>
-                                    </div>
-                                );
+                                if (i === 1)
+                                    return (
+                                        <div key="ag" className="rounded-xl border border-accent/20 bg-accent/5 p-3 text-center">
+                                            <div className="stat-label mb-1">Agreement</div>
+                                            <div className="font-mono text-xl font-bold text-accent">
+                                                {result.aiConsensus!.agreementScore}%
+                                            </div>
+                                        </div>
+                                    );
                                 const s = SIGNAL[item!.v as keyof typeof SIGNAL] || SIGNAL.neutral;
                                 return (
                                     <div key={i} className={`rounded-xl border ${s.border} ${s.bg} p-3 text-center`}>
@@ -37,7 +40,11 @@ export function BottomSection({ result }: { result: AnalysisResponse }) {
                         {result.aiConsensus.divergences.length > 0 && (
                             <div className="space-y-1">
                                 <span className="stat-label text-gold/60">Divergences</span>
-                                {result.aiConsensus.divergences.map((d, i) => <div key={i} className="rounded-lg bg-gold/5 border border-gold/10 px-3 py-1.5 text-base text-white/70">{d}</div>)}
+                                {result.aiConsensus.divergences.map((d, i) => (
+                                    <div key={i} className="rounded-lg bg-gold/5 border border-gold/10 px-3 py-1.5 text-base text-white/70">
+                                        {d}
+                                    </div>
+                                ))}
                             </div>
                         )}
                     </SectionCard>
@@ -49,12 +56,31 @@ export function BottomSection({ result }: { result: AnalysisResponse }) {
                 <SectionCard title="Full Analysis Report" icon="📝" delay="0.95s">
                     <div className="prose prose-invert prose-sm max-w-none text-white/70 leading-relaxed">
                         {result.report.split('\n').map((line, i) => {
-                            if (line.startsWith('# ')) return <h1 key={i} className="font-display text-xl font-bold text-white mt-6 mb-2">{line.slice(2)}</h1>;
-                            if (line.startsWith('## ')) return <h2 key={i} className="font-display text-base font-semibold text-white/80 mt-4 mb-1.5">{line.slice(3)}</h2>;
-                            if (line.startsWith('**') && line.endsWith('**')) return <p key={i} className="font-semibold text-white/90 mt-3 mb-1">{line.slice(2, -2)}</p>;
+                            if (line.startsWith('# '))
+                                return (
+                                    <h1 key={i} className="font-display text-xl font-bold text-white mt-6 mb-2">
+                                        {line.slice(2)}
+                                    </h1>
+                                );
+                            if (line.startsWith('## '))
+                                return (
+                                    <h2 key={i} className="font-display text-base font-semibold text-white/80 mt-4 mb-1.5">
+                                        {line.slice(3)}
+                                    </h2>
+                                );
+                            if (line.startsWith('**') && line.endsWith('**'))
+                                return (
+                                    <p key={i} className="font-semibold text-white/90 mt-3 mb-1">
+                                        {line.slice(2, -2)}
+                                    </p>
+                                );
                             if (line.startsWith('---')) return <hr key={i} className="border-white/[0.06] my-4" />;
                             if (line.trim() === '') return <br key={i} />;
-                            return <p key={i} className="mb-2">{line}</p>;
+                            return (
+                                <p key={i} className="mb-2">
+                                    {line}
+                                </p>
+                            );
                         })}
                     </div>
                 </SectionCard>
@@ -71,8 +97,13 @@ export function BottomSection({ result }: { result: AnalysisResponse }) {
                         </div>
                         <div className="space-y-1.5">
                             {result.audit.claims.map((c, i) => (
-                                <div key={i} className="flex items-start gap-2 rounded-lg bg-white/[0.02] border border-white/[0.04] px-3 py-2">
-                                    <span className={`mt-0.5 flex-shrink-0 text-base ${c.status === 'grounded' ? 'text-emerald' : c.status === 'speculative' ? 'text-gold' : 'text-rose'}`}>
+                                <div
+                                    key={i}
+                                    className="flex items-start gap-2 rounded-lg bg-white/[0.02] border border-white/[0.04] px-3 py-2"
+                                >
+                                    <span
+                                        className={`mt-0.5 flex-shrink-0 text-base ${c.status === 'grounded' ? 'text-emerald' : c.status === 'speculative' ? 'text-gold' : 'text-rose'}`}
+                                    >
                                         {c.status === 'grounded' ? '✓' : c.status === 'speculative' ? '~' : '✗'}
                                     </span>
                                     <div>
@@ -125,7 +156,9 @@ export function BottomSection({ result }: { result: AnalysisResponse }) {
                                                 >
                                                     <span className="text-accent/40 group-hover:text-accent flex-shrink-0">→</span>
                                                     <span className="truncate">{link.label}</span>
-                                                    <span className="ml-auto text-[10px] text-white/20 group-hover:text-accent/40 flex-shrink-0">↗</span>
+                                                    <span className="ml-auto text-[10px] text-white/20 group-hover:text-accent/40 flex-shrink-0">
+                                                        ↗
+                                                    </span>
                                                 </a>
                                             ))}
                                         </div>

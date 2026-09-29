@@ -16,29 +16,29 @@ machine, your data — nothing leaves localhost except provider API calls.
 One **global ticker** (nav search, press `/` to focus) drives every engine.
 Recent tickers appear as chips on the Overview.
 
-| Tab | Engine | What it does |
-|---|---|---|
-| 🌌 Overview | fused | Live quote + 6-month chart + 52W range + quant snapshot + investor lenses, one screen |
-| 🜁 Fusion | original | **Valuation Ensemble** (5 philosophies vote, disagreement index) · **Council of Agents** (all paradigms deliberate, chair rules) |
-| 🧠 Research | Aeon worker | 55-dimension report + PDF (~10 s, Finnhub/Gemini/Groq/Cohere keys) |
-| 📡 Markets | OpenBB Platform | Live watchlist; cross-source merged quotes; full catalog at :6900/docs |
-| ⚔️ Agent Desk | TradingAgents | Real LangGraph: 4 analysts → bull/bear debate → trader → risk (3–10 min, needs LLM key; Gemini/OpenAI/Anthropic selectable) |
-| 🤖 FinRobot | FinRobot | Their native equity-research web app (login: admin + password from launcher output) |
-| 🔬 Analyst | research-analyst-agent | Their native 11-agent Streamlit app (RAG over SEC filings) |
-| 🧮 Quant Lab | Aeon analytics | Monte Carlo (10K GBM), 3-scenario DCF, Markowitz optimizer |
-| 🏛️ Personas | Aeon analytics | Buffett/Graham/Lynch/Munger/Marks lenses (free quick-take + live AI) |
-| 🖥️ Fincept | FinceptTerminal | Desktop companion: `open ~/Applications/FinceptTerminal.app` |
+| Tab           | Engine                 | What it does                                                                                                                     |
+| ------------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| 🌌 Overview   | fused                  | Live quote + 6-month chart + 52W range + quant snapshot + investor lenses, one screen                                            |
+| 🜁 Fusion      | original               | **Valuation Ensemble** (5 philosophies vote, disagreement index) · **Council of Agents** (all paradigms deliberate, chair rules) |
+| 🧠 Research   | Aeon worker            | 55-dimension report + PDF (~10 s, Finnhub/Gemini/Groq/Cohere keys)                                                               |
+| 📡 Markets    | OpenBB Platform        | Live watchlist; cross-source merged quotes; full catalog at :6900/docs                                                           |
+| ⚔️ Agent Desk | TradingAgents          | Real LangGraph: 4 analysts → bull/bear debate → trader → risk (3–10 min, needs LLM key; Gemini/OpenAI/Anthropic selectable)      |
+| 🤖 FinRobot   | FinRobot               | Their native equity-research web app (login: admin + password from launcher output)                                              |
+| 🔬 Analyst    | research-analyst-agent | Their native 11-agent Streamlit app (RAG over SEC filings)                                                                       |
+| 🧮 Quant Lab  | Aeon analytics         | Monte Carlo (10K GBM), 3-scenario DCF, Markowitz optimizer                                                                       |
+| 🏛️ Personas   | Aeon analytics         | Buffett/Graham/Lynch/Munger/Marks lenses (free quick-take + live AI)                                                             |
+| 🖥️ Fincept    | FinceptTerminal        | Desktop companion: `open ~/Applications/FinceptTerminal.app`                                                                     |
 
 ## Services & ports
 
-| Port | Service | Source |
-|---|---|---|
-| 5173 | React frontend | `frontend/` |
-| 8787 | Report worker | `worker/` |
-| 8000 | Aeon analytics + fusion | `analytics/main.py` |
-| 6900 | OpenBB Platform REST API | `vendor/venv-openbb` |
-| 8001 | TradingAgents wrapper | `vendor/ta_service.py` |
-| 8002 | FinRobot web app | `vendor/FinRobot` |
+| Port | Service                    | Source                                    |
+| ---- | -------------------------- | ----------------------------------------- |
+| 5173 | React frontend             | `frontend/`                               |
+| 8787 | Report worker              | `worker/`                                 |
+| 8000 | Aeon analytics + fusion    | `analytics/main.py`                       |
+| 6900 | OpenBB Platform REST API   | `vendor/venv-openbb`                      |
+| 8001 | TradingAgents wrapper      | `vendor/ta_service.py`                    |
+| 8002 | FinRobot web app           | `vendor/FinRobot`                         |
 | 8501 | Research analyst Streamlit | `vendor/financial-research-analyst-agent` |
 
 Logs: `/tmp/aeon-analytics.log`, `/tmp/openbb-api.log`, `/tmp/ta-service.log`,

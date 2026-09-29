@@ -5,11 +5,7 @@ import type { AuditResult, AuditClaim, FinancialData } from './types';
  * for RAG-based fact auditing. Each claim is classified as
  * grounded, speculative, or unverifiable.
  */
-export async function auditReport(
-    report: string,
-    financials: FinancialData,
-    apiKey: string
-): Promise<AuditResult> {
+export async function auditReport(report: string, financials: FinancialData, apiKey: string): Promise<AuditResult> {
     // Build source documents for grounding
     const sourceDocuments = [
         {

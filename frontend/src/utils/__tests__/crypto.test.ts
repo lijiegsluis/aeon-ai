@@ -4,15 +4,7 @@
  * and analysis cache encryption.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import {
-    encryptKeys,
-    decryptKeys,
-    hasStoredKeys,
-    clearStoredKeys,
-    encryptCache,
-    decryptCache,
-    migrateLegacyKeys,
-} from '../crypto';
+import { encryptKeys, decryptKeys, hasStoredKeys, clearStoredKeys, encryptCache, decryptCache, migrateLegacyKeys } from '../crypto';
 import type { APIKeys } from '../crypto';
 
 describe('crypto – API Key Encryption', () => {

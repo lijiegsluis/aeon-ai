@@ -42,15 +42,16 @@ export default function AnalysisHistory() {
         }
     };
 
-    const filteredHistory = filter
-        ? history.filter(h => h.ticker.toLowerCase().includes(filter.toLowerCase()))
-        : history;
+    const filteredHistory = filter ? history.filter((h) => h.ticker.toLowerCase().includes(filter.toLowerCase())) : history;
 
-    const groupedByTicker = filteredHistory.reduce((acc, item) => {
-        if (!acc[item.ticker]) acc[item.ticker] = [];
-        acc[item.ticker].push(item);
-        return acc;
-    }, {} as Record<string, HistoryItem[]>);
+    const groupedByTicker = filteredHistory.reduce(
+        (acc, item) => {
+            if (!acc[item.ticker]) acc[item.ticker] = [];
+            acc[item.ticker].push(item);
+            return acc;
+        },
+        {} as Record<string, HistoryItem[]>,
+    );
 
     return (
         <div className="animate-fade-in space-y-4">
@@ -60,14 +61,12 @@ export default function AnalysisHistory() {
                     className="input-field"
                     placeholder="Filter by ticker..."
                     value={filter}
-                    onChange={e => setFilter(e.target.value)}
+                    onChange={(e) => setFilter(e.target.value)}
                 />
             </div>
 
             {Object.keys(groupedByTicker).length === 0 && (
-                <div className="card p-8 text-center text-white/50">
-                    No analysis history yet. Run an analysis to save it.
-                </div>
+                <div className="card p-8 text-center text-white/50">No analysis history yet. Run an analysis to save it.</div>
             )}
 
             {Object.entries(groupedByTicker).map(([ticker, items]) => (
@@ -79,17 +78,12 @@ export default function AnalysisHistory() {
                         </div>
                     </div>
                     <div className="divide-y divide-white/[0.03]">
-                        {items.map(item => (
+                        {items.map((item) => (
                             <div key={item.id} className="p-4 flex items-center justify-between hover:bg-white/[0.02]">
                                 <div>
-                                    <div className="text-sm text-white/70">
-                                        {new Date(item.created_at).toLocaleString()}
-                                    </div>
+                                    <div className="text-sm text-white/70">{new Date(item.created_at).toLocaleString()}</div>
                                 </div>
-                                <button
-                                    className="btn-ghost text-sm"
-                                    onClick={() => replayAnalysis(item.id)}
-                                >
+                                <button className="btn-ghost text-sm" onClick={() => replayAnalysis(item.id)}>
                                     Replay
                                 </button>
                             </div>

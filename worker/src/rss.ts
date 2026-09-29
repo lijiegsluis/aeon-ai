@@ -22,7 +22,7 @@ export async function fetchRedditPosts(ticker: string): Promise<RSSPost[]> {
             headers: { 'User-Agent': 'AeonNimbusAI/1.0' },
         })
             .then((r) => (r.ok ? r.text() : ''))
-            .catch(() => '')
+            .catch(() => ''),
     );
 
     const results = await Promise.all(feeds);

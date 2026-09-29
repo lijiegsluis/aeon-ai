@@ -26,7 +26,7 @@ export default function AlertsManager() {
     useEffect(() => {
         // Request notification permission
         if ('Notification' in window && Notification.permission === 'default') {
-            Notification.requestPermission().then(perm => {
+            Notification.requestPermission().then((perm) => {
                 setNotificationsEnabled(perm === 'granted');
             });
         } else {
@@ -119,13 +119,8 @@ export default function AlertsManager() {
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
-                    <input
-                        className="input-field"
-                        placeholder="Ticker"
-                        value={ticker}
-                        onChange={e => setTicker(e.target.value)}
-                    />
-                    <select className="input-field" value={conditionType} onChange={e => setConditionType(e.target.value)}>
+                    <input className="input-field" placeholder="Ticker" value={ticker} onChange={(e) => setTicker(e.target.value)} />
+                    <select className="input-field" value={conditionType} onChange={(e) => setConditionType(e.target.value)}>
                         <option value="price_above">Price Above</option>
                         <option value="price_below">Price Below</option>
                         <option value="pe_above">P/E Above</option>
@@ -137,9 +132,11 @@ export default function AlertsManager() {
                         step="0.01"
                         placeholder="Threshold"
                         value={threshold}
-                        onChange={e => setThreshold(e.target.value)}
+                        onChange={(e) => setThreshold(e.target.value)}
                     />
-                    <button className="btn-primary" onClick={createAlert}>Create Alert</button>
+                    <button className="btn-primary" onClick={createAlert}>
+                        Create Alert
+                    </button>
                 </div>
                 {err && <ErrorNote msg={err} />}
             </div>
@@ -149,10 +146,8 @@ export default function AlertsManager() {
                     <h3 className="font-semibold">Active Alerts ({alerts.length})</h3>
                 </div>
                 <div className="divide-y divide-white/[0.03]">
-                    {alerts.length === 0 && (
-                        <div className="p-4 text-center text-white/50 text-sm">No active alerts</div>
-                    )}
-                    {alerts.map(alert => (
+                    {alerts.length === 0 && <div className="p-4 text-center text-white/50 text-sm">No active alerts</div>}
+                    {alerts.map((alert) => (
                         <div key={alert.id} className="p-4 flex items-center justify-between">
                             <div>
                                 <div className="font-mono font-semibold text-gold">{alert.ticker}</div>
@@ -160,10 +155,7 @@ export default function AlertsManager() {
                                     {conditionLabels[alert.condition_type]} {alert.threshold}
                                 </div>
                             </div>
-                            <button
-                                className="text-sm text-rose hover:text-rose/80"
-                                onClick={() => deactivateAlert(alert.id)}
-                            >
+                            <button className="text-sm text-rose hover:text-rose/80" onClick={() => deactivateAlert(alert.id)}>
                                 Deactivate
                             </button>
                         </div>

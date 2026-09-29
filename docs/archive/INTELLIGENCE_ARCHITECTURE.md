@@ -3,12 +3,14 @@
 ## Product Positioning
 
 **Aeon Nimbus Terminal** (Port 5173)
+
 - Financial analysis workstation
 - Compare, analyze, backtest
 - On-demand research
 - Desktop app feel
 
 **Aeon Nimbus Intelligence** (Port 5175) - NEW
+
 - Market event monitoring dashboard
 - Real-time news aggregation
 - D-X countdown system
@@ -17,6 +19,7 @@
 ## Data Sources - Comprehensive Coverage
 
 ### 1. Telegram Channels (Real-time)
+
 - @Tradeul_Breaking_News ✓ (configured)
 - @DeItaone (market-moving news)
 - @FirstSquawk (economic data)
@@ -25,7 +28,9 @@
 - @zerohedge (alternative perspective)
 
 ### 2. Economic Calendar (Scheduled Events)
+
 **Macro Data Releases:**
+
 - CPI (Consumer Price Index) - Monthly
 - NFP (Non-Farm Payrolls) - Monthly
 - GDP (Gross Domestic Product) - Quarterly
@@ -35,12 +40,14 @@
 - PMI (Manufacturing/Services) - Monthly
 
 **Central Bank Events:**
+
 - FOMC Meetings (8 per year)
 - ECB Meetings (8 per year)
 - BOJ Meetings (8 per year)
 - BOE Meetings (8 per year)
 
 **Government Events:**
+
 - G7/G20 Summits
 - Presidential visits
 - State of the Union
@@ -48,6 +55,7 @@
 - Election dates
 
 ### 3. Corporate Events (S&P 500)
+
 - Earnings dates (all 500 companies)
 - Product launches
 - Investor days
@@ -56,6 +64,7 @@
 - Stock splits
 
 ### 4. Geopolitical Events
+
 - UN Security Council meetings
 - NATO summits
 - OPEC+ meetings
@@ -64,6 +73,7 @@
 - Peace talks
 
 ### 5. Commodity Events
+
 - USDA crop reports
 - EIA inventory reports
 - OPEC production decisions
@@ -72,6 +82,7 @@
 ## User Interface Design
 
 ### Main Dashboard Layout
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  🌐 AEON NIMBUS INTELLIGENCE                    [Settings]  │
@@ -116,6 +127,7 @@
 ```
 
 ### Event Detail View
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  ← Back to Dashboard                                         │
@@ -167,6 +179,7 @@
 ## Technical Architecture
 
 ### Backend Service (Port 8001)
+
 ```python
 # New dedicated service: intelligence_service.py
 FastAPI(
@@ -184,6 +197,7 @@ Endpoints:
 ```
 
 ### Frontend (Port 5175)
+
 ```
 intelligence-app/
 ├── src/
@@ -205,6 +219,7 @@ intelligence-app/
 ```
 
 ### Data Pipeline
+
 ```
 [Telegram API] ──→ [Event Extractor] ──→ [Database]
                           ↓
@@ -222,21 +237,25 @@ intelligence-app/
 ## Data Sources Implementation Priority
 
 ### Phase 1 (Week 1) - Foundation
+
 1. ✅ Telegram @Tradeul_Breaking_News (done)
 2. Economic calendar sync (Trading Economics API)
 3. S&P 500 earnings dates (Yahoo Finance)
 
 ### Phase 2 (Week 2) - Expansion
+
 4. Additional Telegram channels (5 more)
 5. FOMC schedule (Federal Reserve)
 6. Major geopolitical events (UN, G7)
 
 ### Phase 3 (Week 3) - Intelligence
+
 7. Historical pattern matching
 8. Sentiment correlation
 9. Smart alert rules
 
 ### Phase 4 (Week 4) - Polish
+
 10. Mobile app
 11. Export/sharing
 12. Portfolio integration
@@ -244,6 +263,7 @@ intelligence-app/
 ## Shall I proceed with building Aeon Nimbus Intelligence as a separate application?
 
 Next steps:
+
 1. Create new project structure at /Users/lijie/aeon-ai/intelligence/
 2. Build dedicated FastAPI service (port 8001)
 3. Create React dashboard (port 5175)
@@ -251,6 +271,7 @@ Next steps:
 5. Deploy alongside Terminal
 
 This gives you:
+
 - Terminal at localhost:5173 (analysis workstation)
 - Intelligence at localhost:5175 (event monitoring)
 - Platform at localhost:5174 (research reports)

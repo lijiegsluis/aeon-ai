@@ -38,7 +38,12 @@ export default function DeepReports() {
     const logRef = useRef<HTMLDivElement>(null);
     const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-    useEffect(() => () => { if (timer.current) clearInterval(timer.current); }, []);
+    useEffect(
+        () => () => {
+            if (timer.current) clearInterval(timer.current);
+        },
+        [],
+    );
     useEffect(() => {
         // auto-scroll the streaming log
         if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
@@ -58,42 +63,58 @@ export default function DeepReports() {
                     if (timer.current) clearInterval(timer.current);
                     setBusy(false);
                 }
-            } catch { /* keep polling */ }
+            } catch {
+                /* keep polling */
+            }
         }, 2000);
     };
 
     const generate = async () => {
-        if (!company.trim()) { setErr('Enter the company name (e.g. Apple Inc.) to generate a report.'); return; }
-        if (!openaiKey) { setErr('The report engine writes with OpenAI — add an OpenAI key in the vault (🔑) first.'); return; }
-        setBusy(true); setErr(''); setState({ status: 'pending', logs: [], result: null });
+        if (!company.trim()) {
+            setErr('Enter the company name (e.g. Apple Inc.) to generate a report.');
+            return;
+        }
+        if (!openaiKey) {
+            setErr('The report engine writes with OpenAI — add an OpenAI key in the vault (🔑) first.');
+            return;
+        }
+        setBusy(true);
+        setErr('');
+        setState({ status: 'pending', logs: [], result: null });
         try {
             const r = await fetch(`${FINROBOT}/api/run`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
                 body: JSON.stringify({
-                    ticker, company_name: company.trim(),
-                    peers: peers.split(/[,\s]+/).map((p) => p.trim().toUpperCase()).filter(Boolean),
+                    ticker,
+                    company_name: company.trim(),
+                    peers: peers
+                        .split(/[,\s]+/)
+                        .map((p) => p.trim().toUpperCase())
+                        .filter(Boolean),
                     openai_api_key: openaiKey,
-                    generate_text: true, generate_pdf: true,
-                    enable_sensitivity_analysis: true, enable_catalyst_analysis: true,
-                    enable_enhanced_news: true, enable_enhanced_charts: true,
+                    generate_text: true,
+                    generate_pdf: true,
+                    enable_sensitivity_analysis: true,
+                    enable_catalyst_analysis: true,
+                    enable_enhanced_news: true,
+                    enable_enhanced_charts: true,
                     enable_valuation_analysis: true,
                 }),
             });
             if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || `HTTP ${r.status}`);
             const { task_id } = await r.json();
             poll(task_id);
-        } catch (e) { setErr(String(e)); setBusy(false); }
+        } catch (e) {
+            setErr(String(e));
+            setBusy(false);
+        }
     };
 
     const report = state?.result;
-    const reportUrl = report?.html?.length
-        ? `${FINROBOT}/output/${report.ticker}/report/${report.html[0]}`
-        : null;
-    const pdfUrl = report?.pdf?.length
-        ? `${FINROBOT}/output/${report.ticker}/report/${report.pdf[0]}`
-        : null;
+    const reportUrl = report?.html?.length ? `${FINROBOT}/output/${report.ticker}/report/${report.html[0]}` : null;
+    const pdfUrl = report?.pdf?.length ? `${FINROBOT}/output/${report.ticker}/report/${report.pdf[0]}` : null;
 
     return (
         <div className="animate-fade-in space-y-4">
@@ -105,15 +126,23 @@ export default function DeepReports() {
                 <div className="flex flex-wrap items-end gap-2">
                     <div>
                         <label className="stat-label mb-1 block">Company name</label>
-                        <input className="input-field !w-[240px]" value={company}
-                            onChange={(e) => setCompany(e.target.value)} placeholder="e.g. Apple Inc."
-                            onKeyDown={(e) => e.key === 'Enter' && !busy && generate()} />
+                        <input
+                            className="input-field !w-[240px]"
+                            value={company}
+                            onChange={(e) => setCompany(e.target.value)}
+                            placeholder="e.g. Apple Inc."
+                            onKeyDown={(e) => e.key === 'Enter' && !busy && generate()}
+                        />
                     </div>
                     <div>
                         <label className="stat-label mb-1 block">Peer tickers (optional)</label>
-                        <input className="input-field !w-[200px]" value={peers}
-                            onChange={(e) => setPeers(e.target.value)} placeholder="e.g. MSFT, SAP, IBM"
-                            onKeyDown={(e) => e.key === 'Enter' && !busy && generate()} />
+                        <input
+                            className="input-field !w-[200px]"
+                            value={peers}
+                            onChange={(e) => setPeers(e.target.value)}
+                            placeholder="e.g. MSFT, SAP, IBM"
+                            onKeyDown={(e) => e.key === 'Enter' && !busy && generate()}
+                        />
                     </div>
                     <button className="btn-primary" onClick={generate} disabled={busy}>
                         {busy ? 'Generating…' : `Generate report for ${ticker}`}
@@ -126,28 +155,40 @@ export default function DeepReports() {
                 </p>
             </div>
 
-            {busy && state && state.status !== 'completed' && (() => {
-                const { pct, label } = phaseFromLogs(state.logs ?? []);
-                // gentle time creep so the bar never looks frozen between phases
-                const shown = Math.min(pct + Math.min(elapsed / 8, 8), 97);
-                return (
-                    <ProgressBar pct={shown} label={label}
-                        sub={`Elapsed ${Math.floor(elapsed / 60)}m ${elapsed % 60}s · live pipeline log below · safe to switch tabs`} />
-                );
-            })()}
+            {busy &&
+                state &&
+                state.status !== 'completed' &&
+                (() => {
+                    const { pct, label } = phaseFromLogs(state.logs ?? []);
+                    // gentle time creep so the bar never looks frozen between phases
+                    const shown = Math.min(pct + Math.min(elapsed / 8, 8), 97);
+                    return (
+                        <ProgressBar
+                            pct={shown}
+                            label={label}
+                            sub={`Elapsed ${Math.floor(elapsed / 60)}m ${elapsed % 60}s · live pipeline log below · safe to switch tabs`}
+                        />
+                    );
+                })()}
 
             {state && (state.status === 'failed' || (busy && state.status !== 'completed')) && (
                 <div className="card-glass p-4">
                     <p className="stat-label mb-2 text-white/50">Pipeline log</p>
-                    <div ref={logRef} className="max-h-56 overflow-y-auto rounded-lg bg-black/40 p-3 font-mono text-[11px] leading-relaxed text-white/60">
+                    <div
+                        ref={logRef}
+                        className="max-h-56 overflow-y-auto rounded-lg bg-black/40 p-3 font-mono text-[11px] leading-relaxed text-white/60"
+                    >
                         {(state.logs ?? []).map((l, i) => (
-                            <div key={i} className={/error|failed|traceback|modulenotfound/i.test(l) ? 'text-rose' : ''}>{l}</div>
+                            <div key={i} className={/error|failed|traceback|modulenotfound/i.test(l) ? 'text-rose' : ''}>
+                                {l}
+                            </div>
                         ))}
                         {(!state.logs || state.logs.length === 0) && <div className="text-white/30">Starting pipeline…</div>}
                     </div>
                     {state.status === 'failed' && (
                         <p className="mt-2 text-sm text-rose">
-                            The report pipeline failed — see the log above. Most often this means the OpenAI key was rejected or hit a limit.
+                            The report pipeline failed — see the log above. Most often this means the OpenAI key was rejected or hit a
+                            limit.
                         </p>
                     )}
                 </div>
@@ -164,8 +205,7 @@ export default function DeepReports() {
                         )}
                     </div>
                     <div className="overflow-hidden rounded-2xl border border-white/[0.06]" style={{ background: '#fff' }}>
-                        <iframe src={reportUrl} title="Equity research report"
-                            className="h-[78vh] w-full" />
+                        <iframe src={reportUrl} title="Equity research report" className="h-[78vh] w-full" />
                     </div>
                 </div>
             )}

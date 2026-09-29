@@ -21,13 +21,32 @@ export interface DataSource {
 }
 
 export const DATA_SOURCES: DataSource[] = [
-    { id: 'market-data', label: 'Aeon Markets', engineName: 'Market data layer', role: 'Live quotes, fundamentals, history', real: true, license: 'AGPL-3.0' },
-    { id: 'multi-agent', label: 'Multi-Agent Engine', engineName: 'Multi-agent debate', role: 'Analyst → researcher → trader → risk debate', real: true, license: 'Apache-2.0' },
+    {
+        id: 'market-data',
+        label: 'Aeon Markets',
+        engineName: 'Market data layer',
+        role: 'Live quotes, fundamentals, history',
+        real: true,
+        license: 'AGPL-3.0',
+    },
+    {
+        id: 'multi-agent',
+        label: 'Multi-Agent Engine',
+        engineName: 'Multi-agent debate',
+        role: 'Analyst → researcher → trader → risk debate',
+        real: true,
+        license: 'Apache-2.0',
+    },
     { id: 'deep-report', label: 'Deep Report Engine', role: 'Institutional equity research reports', real: true, license: 'Apache-2.0' },
     { id: 'deep-research', label: 'Deep Research Agents', role: 'Hierarchical RAG over filings', real: true, license: 'MIT' },
     { id: 'terminal-core', label: 'Desktop Terminal Core', role: 'Native workstation companion', real: true, license: 'AGPL-3.0' },
-    { id: 'quant-native', label: 'Aeon native', role: 'In-house quant models — Monte Carlo, CAPM-based DCF, Fusion valuation ensemble', real: false },
-    { id: 'personas-native', label: 'Aeon native', role: 'Persona commentary grounded in each persona\'s own computed metric', real: false },
+    {
+        id: 'quant-native',
+        label: 'Aeon native',
+        role: 'In-house quant models — Monte Carlo, CAPM-based DCF, Fusion valuation ensemble',
+        real: false,
+    },
+    { id: 'personas-native', label: 'Aeon native', role: "Persona commentary grounded in each persona's own computed metric", real: false },
 ];
 
 export function getSource(id: string): DataSource | undefined {

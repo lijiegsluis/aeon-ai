@@ -13,34 +13,34 @@
 ### ✅ Implemented Features
 
 1. **D-X Countdown System** (Unique IP)
-   - 4-phase framework: Danger Zone, Euforia, Accumulation, Pre-Rumor
-   - Real-time countdown to 36+ major events
-   - Phase-based trading recommendations
+    - 4-phase framework: Danger Zone, Euforia, Accumulation, Pre-Rumor
+    - Real-time countdown to 36+ major events
+    - Phase-based trading recommendations
 
 2. **Real-Time News Intelligence**
-   - Multi-source aggregation (20+ sources ready)
-   - FinBERT sentiment analysis
-   - Ticker extraction and correlation
+    - Multi-source aggregation (20+ sources ready)
+    - FinBERT sentiment analysis
+    - Ticker extraction and correlation
 
 3. **Portfolio Event Exposure**
-   - See YOUR holdings' upcoming events
-   - Risk scoring and alerts
-   - Position-level recommendations
+    - See YOUR holdings' upcoming events
+    - Risk scoring and alerts
+    - Position-level recommendations
 
 4. **AI Assistant**
-   - Natural language queries (LangChain + Claude)
-   - Ticker analysis on demand
-   - Daily briefings
+    - Natural language queries (LangChain + Claude)
+    - Ticker analysis on demand
+    - Daily briefings
 
 5. **Pattern Recognition**
-   - Historical price movements around events
-   - Backtesting engine
-   - Confidence-scored predictions
+    - Historical price movements around events
+    - Backtesting engine
+    - Confidence-scored predictions
 
 6. **Professional UI/UX**
-   - Premium fintech design language
-   - Real-time updates (10s refresh)
-   - Three-tab interface
+    - Premium fintech design language
+    - Real-time updates (10s refresh)
+    - Three-tab interface
 
 ---
 
@@ -49,6 +49,7 @@
 ### Priority 1: Core Intelligence (This Week)
 
 #### 1.1 Enhanced Event Coverage
+
 ```python
 # Add more granular events
 - Split earnings into: Pre-announcement, Earnings Call, Guidance
@@ -59,6 +60,7 @@
 ```
 
 #### 1.2 Advanced Pattern Recognition (Using TA-Lib)
+
 ```python
 from pattern_analyzer_v2 import PatternAnalyzer
 
@@ -68,7 +70,7 @@ class EnhancedPatternAnalyzer:
     - tensortrade-org/tensortrade (RL patterns)
     - quantopian/zipline (event-driven backtesting)
     """
-    
+
     def analyze_with_indicators(self, ticker, event):
         # RSI, MACD, Bollinger Bands around events
         # Volatility spikes prediction
@@ -77,6 +79,7 @@ class EnhancedPatternAnalyzer:
 ```
 
 #### 1.3 Multi-Timeframe Analysis
+
 ```python
 # Inspired by OpenBB Terminal structure
 timeframes = {
@@ -93,19 +96,20 @@ timeframes = {
 ### Priority 2: Data Intelligence (This Week)
 
 #### 2.1 Investing.com Integration
+
 ```python
 # investing_com_scraper.py
 import investpy
 
 class InvestingComIntegration:
     """Real-time economic calendar from Investing.com"""
-    
+
     def fetch_economic_calendar(self, days_ahead=30):
         # High-impact events (stars: 3)
         # Medium-impact events (stars: 2)
         # Real-time updates
         pass
-    
+
     def fetch_earnings_calendar(self):
         # EPS estimates
         # Revenue forecasts
@@ -114,11 +118,12 @@ class InvestingComIntegration:
 ```
 
 #### 2.2 Forex Factory Integration
+
 ```python
 # forex_factory_scraper.py
 class ForexFactoryIntegration:
     """Currency-focused event calendar"""
-    
+
     def fetch_forex_events(self):
         # Central bank meetings
         # Interest rate decisions
@@ -128,11 +133,12 @@ class ForexFactoryIntegration:
 ```
 
 #### 2.3 Options Flow Data
+
 ```python
 # Inspired by unusual_whales patterns
 class OptionsFlowTracker:
     """Track unusual options activity before events"""
-    
+
     def detect_unusual_activity(self, ticker, days_before_event):
         # Large call/put sweeps
         # Put/call ratio spikes
@@ -144,11 +150,12 @@ class OptionsFlowTracker:
 ### Priority 3: Advanced Analytics (Next Week)
 
 #### 3.1 Correlation Engine
+
 ```python
 # From quantopian/zipline patterns
 class EventCorrelationEngine:
     """Find correlated asset movements around events"""
-    
+
     def find_correlations(self, primary_event):
         # SPY moves → Individual stocks
         # Oil moves → Energy sector
@@ -157,11 +164,12 @@ class EventCorrelationEngine:
 ```
 
 #### 3.2 Volatility Prediction
+
 ```python
 # Using Prophet + FinRL
 class VolatilityPredictor:
     """Predict volatility spikes around events"""
-    
+
     def forecast_iv(self, ticker, event_date):
         # Historical volatility patterns
         # Options-implied volatility
@@ -170,11 +178,12 @@ class VolatilityPredictor:
 ```
 
 #### 3.3 Sentiment Momentum
+
 ```python
 # Enhanced FinBERT implementation
 class SentimentMomentumTracker:
     """Track sentiment velocity, not just direction"""
-    
+
     def calculate_sentiment_momentum(self, ticker, window='24h'):
         # Sentiment change rate
         # News volume acceleration
@@ -185,6 +194,7 @@ class SentimentMomentumTracker:
 ### Priority 4: User Features (Next 2 Weeks)
 
 #### 4.1 Custom Watchlists
+
 ```python
 # Allow users to create event-focused watchlists
 watchlists = {
@@ -195,16 +205,17 @@ watchlists = {
 ```
 
 #### 4.2 Smart Alerts Enhancement
+
 ```python
 class SmartAlertEngine:
     """Multi-channel intelligent alerts"""
-    
+
     channels = {
         'critical': ['push', 'email', 'desktop', 'sms'],
         'important': ['push', 'desktop'],
         'informational': ['desktop']
     }
-    
+
     triggers = {
         'phase_transition': 'When event moves to next phase',
         'sentiment_spike': 'When sentiment changes >20% in 1 hour',
@@ -214,11 +225,12 @@ class SmartAlertEngine:
 ```
 
 #### 4.3 Strategy Builder
+
 ```python
 # Inspired by freqtrade/freqtrade
 class StrategyBuilder:
     """Visual strategy builder for event trading"""
-    
+
     strategies = {
         'buy_rumor_sell_news': {
             'entry': 'D-10',
@@ -236,11 +248,12 @@ class StrategyBuilder:
 ```
 
 #### 4.4 Paper Trading Mode
+
 ```python
 # Test strategies without risk
 class PaperTradingEngine:
     """Simulated trading with real event data"""
-    
+
     def execute_paper_trade(self, strategy, ticker, event):
         # Track P&L
         # Performance metrics
@@ -251,6 +264,7 @@ class PaperTradingEngine:
 ### Priority 5: Mobile & Accessibility (Month 1)
 
 #### 5.1 Progressive Web App (PWA)
+
 ```javascript
 // Make it installable on mobile
 {
@@ -264,11 +278,12 @@ class PaperTradingEngine:
 ```
 
 #### 5.2 Push Notifications
+
 ```python
 # Using Web Push API
 class PushNotificationService:
     """Real-time mobile notifications"""
-    
+
     def send_push(self, user, alert):
         # Critical events
         # Portfolio alerts
@@ -277,11 +292,12 @@ class PushNotificationService:
 ```
 
 #### 5.3 Voice Interface
+
 ```python
 # "Hey Aeon, what events this week?"
 class VoiceInterface:
     """Voice queries for mobile"""
-    
+
     def process_voice_command(self, audio):
         # Speech to text
         # NLP processing
@@ -296,6 +312,7 @@ class VoiceInterface:
 ### Inspired by Best-in-Class Products
 
 #### From Tradeul.com:
+
 - ✅ Clean dark theme
 - ✅ Real-time ticker updates
 - 🔄 Add: Live price charts
@@ -303,18 +320,21 @@ class VoiceInterface:
 - 🔄 Add: Quick ticker search
 
 #### From Bloomberg Terminal:
+
 - 🔄 Multi-window layout (events + news + charts)
 - 🔄 Keyboard shortcuts
 - 🔄 Command palette (Cmd+K)
 - 🔄 Customizable layouts
 
 #### From TradingView:
+
 - 🔄 Interactive charts with event markers
 - 🔄 Drawing tools for analysis
 - 🔄 Social sharing of ideas
 - 🔄 Custom indicators
 
 #### From Robinhood:
+
 - ✅ Simple, intuitive design
 - 🔄 One-click actions
 - 🔄 Gamification elements
@@ -357,6 +377,7 @@ class VoiceInterface:
 ## 📦 GITHUB REPOS TO INTEGRATE
 
 ### Already Implemented:
+
 1. ✅ **langchain-ai/langchain** - Natural language interface
 2. ✅ **ProsusAI/finBERT** - Sentiment analysis
 3. ✅ **celery/celery** - Background tasks
@@ -366,29 +387,34 @@ class VoiceInterface:
 ### To Implement Next:
 
 #### High Priority:
+
 6. **ccxt/ccxt** - Crypto exchange integration
-   ```python
-   import ccxt
-   # Add crypto events (halving, network upgrades)
-   ```
+
+    ```python
+    import ccxt
+    # Add crypto events (halving, network upgrades)
+    ```
 
 7. **matplotlib/mplfinance** - Financial charts
-   ```python
-   import mplfinance as mpf
-   # Generate chart images for reports
-   ```
+
+    ```python
+    import mplfinance as mpf
+    # Generate chart images for reports
+    ```
 
 8. **ranaroussi/yfinance** - Better price data
-   ```python
-   import yfinance as yf
-   # Real-time quotes, historical data
-   ```
+
+    ```python
+    import yfinance as yf
+    # Real-time quotes, historical data
+    ```
 
 9. **twintproject/twint** - Twitter scraping
-   ```python
-   import twint
-   # Social sentiment tracking
-   ```
+
+    ```python
+    import twint
+    # Social sentiment tracking
+    ```
 
 10. **HIPS/autograd** - Gradient-based optimization
     ```python
@@ -396,6 +422,7 @@ class VoiceInterface:
     ```
 
 #### Medium Priority:
+
 11. **quantopian/alphalens** - Performance analysis
 12. **microsoft/qlib** - Quantitative investment platform
 13. **bashtage/arch** - Volatility modeling
@@ -409,6 +436,7 @@ class VoiceInterface:
 ### Freemium Tiers
 
 **Free (Forever):**
+
 - 5 watchlist tickers
 - 7-day event horizon
 - Basic sentiment
@@ -416,6 +444,7 @@ class VoiceInterface:
 - Daily summary email
 
 **Pro ($29/month):**
+
 - Unlimited watchlist
 - 90-day event horizon
 - Advanced sentiment + patterns
@@ -425,6 +454,7 @@ class VoiceInterface:
 - Priority support
 
 **Institution ($499/month):**
+
 - API access
 - Multiple users (team)
 - Custom data sources
@@ -434,6 +464,7 @@ class VoiceInterface:
 - Advanced analytics
 
 **Enterprise (Custom):**
+
 - On-premise deployment
 - Custom features
 - SLA guarantees
@@ -444,6 +475,7 @@ class VoiceInterface:
 ## 📈 SUCCESS METRICS
 
 ### Product Metrics:
+
 - DAU/MAU ratio > 40%
 - User retention (D1/D7/D30): 60%/40%/25%
 - Time in app: >15 minutes/session
@@ -451,6 +483,7 @@ class VoiceInterface:
 - Alert conversion rate: >30%
 
 ### Business Metrics:
+
 - Free → Pro conversion: >5%
 - Churn rate: <5% monthly
 - LTV/CAC ratio: >3:1
@@ -462,6 +495,7 @@ class VoiceInterface:
 ## 🔧 TECHNICAL IMPROVEMENTS
 
 ### Infrastructure:
+
 1. **Redis caching** - Cache API responses
 2. **PostgreSQL** - Upgrade from SQLite for production
 3. **Docker compose** - One-command deployment
@@ -469,6 +503,7 @@ class VoiceInterface:
 5. **CloudFlare CDN** - Global distribution
 
 ### Performance:
+
 1. **WebSocket connections** - Real-time updates
 2. **Service workers** - Offline capability
 3. **Code splitting** - Faster initial load
@@ -476,6 +511,7 @@ class VoiceInterface:
 5. **Database indexing** - Sub-100ms queries
 
 ### Security:
+
 1. **JWT authentication** - Secure API access
 2. **Rate limiting** - Prevent abuse
 3. **HTTPS only** - Encrypted connections
@@ -487,6 +523,7 @@ class VoiceInterface:
 ## 🎯 NEXT 30 DAYS ROADMAP
 
 ### Week 1: Data & Intelligence
+
 - [ ] Integrate Investing.com calendar
 - [ ] Integrate Forex Factory data
 - [ ] Add options flow tracking
@@ -494,6 +531,7 @@ class VoiceInterface:
 - [ ] Enhanced pattern recognition with TA-Lib
 
 ### Week 2: User Features
+
 - [ ] Custom watchlists
 - [ ] Strategy builder
 - [ ] Paper trading mode
@@ -501,6 +539,7 @@ class VoiceInterface:
 - [ ] Export functionality (PDF reports)
 
 ### Week 3: UI/UX Polish
+
 - [ ] Interactive price charts (TradingView style)
 - [ ] Event timeline visualization
 - [ ] Heat map view
@@ -508,6 +547,7 @@ class VoiceInterface:
 - [ ] Keyboard shortcuts
 
 ### Week 4: Production Ready
+
 - [ ] Docker deployment
 - [ ] PostgreSQL migration
 - [ ] Redis caching

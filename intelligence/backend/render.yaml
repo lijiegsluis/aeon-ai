@@ -2,30 +2,30 @@
 # sentiment, AI predictions/daily brief). On Render: New → Blueprint → connect this
 # repo with Root Directory set to intelligence/backend.
 services:
-  - type: web
-    name: aeon-intelligence-api
-    runtime: docker
-    plan: free            # free web service — spins down when idle (~50s cold start)
-    region: frankfurt     # adjust to the region closest to your primary user base
-    healthCheckPath: /health
-    envVars:
-      - key: AEON_INTEL_ALLOWED_ORIGINS
-        sync: false        # set to the deployed frontend's real origin, e.g. https://aeon-intelligence.pages.dev
-      - key: GROQ_API_KEY
-        sync: false
-      - key: GEMINI_API_KEY
-        sync: false
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: TWELVE_DATA_API_KEY
-        sync: false
-    # DB defaults to SQLite at ~/.aeon/intelligence.db inside the container, which is
-    # EPHEMERAL on Render's free plan — history/predictions reset on every redeploy or
-    # restart. For durable history, add a paid persistent disk and set AEON_INTEL_DB_PATH
-    # to a path under it.
-    #
-    # The Telegram breaking-news feed needs a live, already-authorized Telethon session
-    # file that only exists on the developer's machine and is deliberately NOT included
-    # in this image (see .dockerignore) — it's a personal login credential, not something
-    # to ship in a container. That endpoint will return an empty/"not connected" status in
-    # production until a separate production Telegram session is set up.
+    - type: web
+      name: aeon-intelligence-api
+      runtime: docker
+      plan: free # free web service — spins down when idle (~50s cold start)
+      region: frankfurt # adjust to the region closest to your primary user base
+      healthCheckPath: /health
+      envVars:
+          - key: AEON_INTEL_ALLOWED_ORIGINS
+            sync: false # set to the deployed frontend's real origin, e.g. https://aeon-intelligence.pages.dev
+          - key: GROQ_API_KEY
+            sync: false
+          - key: GEMINI_API_KEY
+            sync: false
+          - key: OPENAI_API_KEY
+            sync: false
+          - key: TWELVE_DATA_API_KEY
+            sync: false
+      # DB defaults to SQLite at ~/.aeon/intelligence.db inside the container, which is
+      # EPHEMERAL on Render's free plan — history/predictions reset on every redeploy or
+      # restart. For durable history, add a paid persistent disk and set AEON_INTEL_DB_PATH
+      # to a path under it.
+      #
+      # The Telegram breaking-news feed needs a live, already-authorized Telethon session
+      # file that only exists on the developer's machine and is deliberately NOT included
+      # in this image (see .dockerignore) — it's a personal login credential, not something
+      # to ship in a container. That endpoint will return an empty/"not connected" status in
+      # production until a separate production Telegram session is set up.

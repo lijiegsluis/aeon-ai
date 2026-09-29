@@ -157,7 +157,7 @@ export const useStore = create<AppState>((set, get) => ({
             });
 
             if (!res.ok) {
-                const err = await res.json().catch(() => ({ error: 'Request failed' })) as { error?: string };
+                const err = (await res.json().catch(() => ({ error: 'Request failed' }))) as { error?: string };
                 throw new Error(err.error || `HTTP ${res.status}`);
             }
 
@@ -177,11 +177,12 @@ export const useStore = create<AppState>((set, get) => ({
             set({ result: data, view: 'report', analysisPhase: '' });
 
             // Best-effort save to History & Replay; demo results are mock data, so skip them
-            if (!demoMode) fetch(`${ANALYTICS_URL}/api/analyses/save`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ticker, result: data, user_id: 1 }),
-            }).catch(() => {});
+            if (!demoMode)
+                fetch(`${ANALYTICS_URL}/api/analyses/save`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ticker, result: data, user_id: 1 }),
+                }).catch(() => {});
         } catch (err) {
             const msg = err instanceof Error ? err.message : 'Analysis failed';
             set({ error: msg, analysisPhase: '' });

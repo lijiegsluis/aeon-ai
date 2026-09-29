@@ -4,11 +4,21 @@
  * ZERO additional API calls. Every formula is documented.
  */
 import type {
-    FinancialData, TechnicalAnalysis, InsiderActivity,
-    EarningsData, SentimentResult, RiskFactor,
-    InvestmentScore, FinancialHealth, AeonScore,
-    MomentumData, ValueGrowthProfile, RiskRewardProfile,
-    DividendAnalysis, ExtendedTechnicals, ValuationModels,
+    FinancialData,
+    TechnicalAnalysis,
+    InsiderActivity,
+    EarningsData,
+    SentimentResult,
+    RiskFactor,
+    InvestmentScore,
+    FinancialHealth,
+    AeonScore,
+    MomentumData,
+    ValueGrowthProfile,
+    RiskRewardProfile,
+    DividendAnalysis,
+    ExtendedTechnicals,
+    ValuationModels,
     BalanceSheetData,
 } from './types';
 
@@ -20,13 +30,13 @@ export function computeInvestmentScore(
     sentiment: SentimentResult | null,
     risks: RiskFactor[],
     insider: InsiderActivity | null,
-    earnings: EarningsData | null
+    earnings: EarningsData | null,
 ): InvestmentScore {
     // Technical score (0-100)
     let technicalScore = 50;
     if (technicals) {
         const signals = [technicals.rsi, technicals.macd, technicals.sma50, technicals.sma200];
-        const bullish = signals.filter(s => s.signal === 'bullish').length;
+        const bullish = signals.filter((s) => s.signal === 'bullish').length;
         technicalScore = (bullish / signals.length) * 100;
         if (technicals.goldenDeathCross?.includes('Golden')) technicalScore = Math.min(100, technicalScore + 10);
         if (technicals.goldenDeathCross?.includes('Death')) technicalScore = Math.max(0, technicalScore - 10);
@@ -53,8 +63,8 @@ export function computeInvestmentScore(
     }
 
     // Risk score (0-100, higher = less risky = better)
-    const highRisks = risks.filter(r => r.severity === 'high').length;
-    const medRisks = risks.filter(r => r.severity === 'medium').length;
+    const highRisks = risks.filter((r) => r.severity === 'high').length;
+    const medRisks = risks.filter((r) => r.severity === 'medium').length;
     let riskScore = 100 - (highRisks * 20 + medRisks * 10);
     riskScore = clamp(riskScore, 0, 100);
 
@@ -67,23 +77,16 @@ export function computeInvestmentScore(
     }
     // Boost for earnings consistency
     if (earnings && earnings.surprises.length > 0) {
-        const beatRate = earnings.surprises.filter(s => s.beat).length / earnings.surprises.length;
+        const beatRate = earnings.surprises.filter((s) => s.beat).length / earnings.surprises.length;
         insiderScore = clamp(insiderScore + (beatRate - 0.5) * 20, 0, 100);
     }
 
     const overall = Math.round(
-        technicalScore * 0.25 +
-        fundamentalScore * 0.25 +
-        sentimentScore * 0.20 +
-        riskScore * 0.15 +
-        insiderScore * 0.15
+        technicalScore * 0.25 + fundamentalScore * 0.25 + sentimentScore * 0.2 + riskScore * 0.15 + insiderScore * 0.15,
     );
 
     const signal: InvestmentScore['signal'] =
-        overall >= 80 ? 'Strong Buy' :
-            overall >= 65 ? 'Buy' :
-                overall >= 45 ? 'Hold' :
-                    overall >= 30 ? 'Sell' : 'Strong Sell';
+        overall >= 80 ? 'Strong Buy' : overall >= 65 ? 'Buy' : overall >= 45 ? 'Hold' : overall >= 30 ? 'Sell' : 'Strong Sell';
 
     return {
         overall,
@@ -107,7 +110,7 @@ export function computeInvestmentScore(
 export function computeFinancialHealth(
     financials: FinancialData,
     candles: number[] | null,
-    balanceSheet?: BalanceSheetData | null
+    balanceSheet?: BalanceSheetData | null,
 ): FinancialHealth {
     const pe = financials.pe || 0;
     const eps = financials.eps || 0;
@@ -130,13 +133,8 @@ export function computeFinancialHealth(
         const tl = balanceSheet.totalLiabilities || 1;
         const sales = balanceSheet.totalRevenue;
 
-        altmanZScore = Math.round((
-            1.2 * (wc / ta) +
-            1.4 * (re / ta) +
-            3.3 * (ebit / ta) +
-            0.6 * (mve / tl) +
-            1.0 * (sales / ta)
-        ) * 100) / 100;
+        altmanZScore =
+            Math.round((1.2 * (wc / ta) + 1.4 * (re / ta) + 3.3 * (ebit / ta) + 0.6 * (mve / tl) + 1.0 * (sales / ta)) * 100) / 100;
         altmanIsEstimated = false;
     } else {
         // Fallback: simplified proxy calculation (clearly labelled as estimated)
@@ -150,37 +148,41 @@ export function computeFinancialHealth(
         altmanIsEstimated = true;
     }
 
-    const altmanZone: FinancialHealth['altmanZone'] =
-        altmanZScore >= 2.99 ? 'safe' :
-            altmanZScore >= 1.81 ? 'grey' : 'distress';
+    const altmanZone: FinancialHealth['altmanZone'] = altmanZScore >= 2.99 ? 'safe' : altmanZScore >= 1.81 ? 'grey' : 'distress';
 
     // Piotroski F-Score — always proxy (real score needs year-over-year comparisons)
     let piotroskiFScore = 0;
-    if (eps > 0) piotroskiFScore++;                          // Positive net income
-    if (financials.revenue > 0) piotroskiFScore++;           // Positive operating CF proxy
-    if (grossMargin > 30) piotroskiFScore++;                 // Good ROA proxy
-    if (eps > 0 && grossMargin > 0) piotroskiFScore++;       // CF > NI proxy
-    if (debtToEquity < 1.0) piotroskiFScore++;               // Decreasing leverage proxy
-    if (grossMargin > 20) piotroskiFScore++;                 // Current ratio proxy
-    if (financials.marketCap > 1000) piotroskiFScore++;      // No dilution proxy (large cap)
-    if (grossMargin > pe * 0.5) piotroskiFScore++;           // Improving margins proxy
-    if (financials.revenue > 0) piotroskiFScore++;           // Revenue growth proxy
+    if (eps > 0) piotroskiFScore++; // Positive net income
+    if (financials.revenue > 0) piotroskiFScore++; // Positive operating CF proxy
+    if (grossMargin > 30) piotroskiFScore++; // Good ROA proxy
+    if (eps > 0 && grossMargin > 0) piotroskiFScore++; // CF > NI proxy
+    if (debtToEquity < 1.0) piotroskiFScore++; // Decreasing leverage proxy
+    if (grossMargin > 20) piotroskiFScore++; // Current ratio proxy
+    if (financials.marketCap > 1000) piotroskiFScore++; // No dilution proxy (large cap)
+    if (grossMargin > pe * 0.5) piotroskiFScore++; // Improving margins proxy
+    if (financials.revenue > 0) piotroskiFScore++; // Revenue growth proxy
     const piotroskiIsEstimated = true; // Always estimated — needs YoY data for real score
 
     const piotroskiRating: FinancialHealth['piotroskiRating'] =
-        piotroskiFScore >= 7 ? 'strong' :
-            piotroskiFScore >= 4 ? 'moderate' : 'weak';
+        piotroskiFScore >= 7 ? 'strong' : piotroskiFScore >= 4 ? 'moderate' : 'weak';
 
     // Use reported ratios from Finnhub when available, otherwise proxy
-    const currentRatio = financials.currentRatioReported && financials.currentRatioReported > 0
-        ? Math.round(financials.currentRatioReported * 100) / 100
-        : debtToEquity > 0 ? Math.round((1 / debtToEquity + 0.5) * 100) / 100 : 2.0;
-    const quickRatio = financials.quickRatioReported && financials.quickRatioReported > 0
-        ? Math.round(financials.quickRatioReported * 100) / 100
-        : Math.round(currentRatio * 0.8 * 100) / 100;
-    const interestCoverage = financials.interestCoverageReported && financials.interestCoverageReported > 0
-        ? Math.round(financials.interestCoverageReported * 100) / 100
-        : eps > 0 && debtToEquity > 0 ? Math.round((eps / (debtToEquity * 0.05)) * 100) / 100 : 10;
+    const currentRatio =
+        financials.currentRatioReported && financials.currentRatioReported > 0
+            ? Math.round(financials.currentRatioReported * 100) / 100
+            : debtToEquity > 0
+              ? Math.round((1 / debtToEquity + 0.5) * 100) / 100
+              : 2.0;
+    const quickRatio =
+        financials.quickRatioReported && financials.quickRatioReported > 0
+            ? Math.round(financials.quickRatioReported * 100) / 100
+            : Math.round(currentRatio * 0.8 * 100) / 100;
+    const interestCoverage =
+        financials.interestCoverageReported && financials.interestCoverageReported > 0
+            ? Math.round(financials.interestCoverageReported * 100) / 100
+            : eps > 0 && debtToEquity > 0
+              ? Math.round((eps / (debtToEquity * 0.05)) * 100) / 100
+              : 10;
 
     // Price position within 52-week range
     const range = h52 - l52;
@@ -230,7 +232,7 @@ export function computeAeonScore(
     financialHealth: FinancialHealth,
     technicals: TechnicalAnalysis | null,
     sentiment: SentimentResult | null,
-    earnings: EarningsData | null
+    earnings: EarningsData | null,
 ): AeonScore {
     const base = investmentScore.overall;
 
@@ -244,10 +246,10 @@ export function computeAeonScore(
     // Earnings consistency bonus
     let earningsBonus = 0;
     if (earnings && earnings.surprises.length >= 4) {
-        const allBeat = earnings.surprises.every(s => s.beat);
+        const allBeat = earnings.surprises.every((s) => s.beat);
         if (allBeat) earningsBonus = 8;
         else {
-            const beatRate = earnings.surprises.filter(s => s.beat).length / earnings.surprises.length;
+            const beatRate = earnings.surprises.filter((s) => s.beat).length / earnings.surprises.length;
             earningsBonus = Math.round((beatRate - 0.5) * 10);
         }
     }
@@ -255,16 +257,27 @@ export function computeAeonScore(
     const numericScore = clamp(base + healthBonus + earningsBonus, 0, 100);
 
     const grade: AeonScore['grade'] =
-        numericScore >= 95 ? 'A+' :
-            numericScore >= 90 ? 'A' :
-                numericScore >= 85 ? 'A-' :
-                    numericScore >= 80 ? 'B+' :
-                        numericScore >= 70 ? 'B' :
-                            numericScore >= 60 ? 'B-' :
-                                numericScore >= 50 ? 'C+' :
-                                    numericScore >= 40 ? 'C' :
-                                        numericScore >= 30 ? 'C-' :
-                                            numericScore >= 20 ? 'D' : 'F';
+        numericScore >= 95
+            ? 'A+'
+            : numericScore >= 90
+              ? 'A'
+              : numericScore >= 85
+                ? 'A-'
+                : numericScore >= 80
+                  ? 'B+'
+                  : numericScore >= 70
+                    ? 'B'
+                    : numericScore >= 60
+                      ? 'B-'
+                      : numericScore >= 50
+                        ? 'C+'
+                        : numericScore >= 40
+                          ? 'C'
+                          : numericScore >= 30
+                            ? 'C-'
+                            : numericScore >= 20
+                              ? 'D'
+                              : 'F';
 
     // Calculate confidence based on data availability
     let dataPoints = 2; // financials always available + investment score
@@ -288,21 +301,23 @@ export function computeAeonScore(
     if (financialHealth.piotroskiRating === 'strong') strengths.push('Excellent financial health (Piotroski)');
     if (financialHealth.altmanZone === 'distress') weaknesses.push('Bankruptcy risk (Altman Z)');
 
-    if (earnings && earnings.surprises.length >= 4 && earnings.surprises.every(s => s.beat)) {
+    if (earnings && earnings.surprises.length >= 4 && earnings.surprises.every((s) => s.beat)) {
         strengths.push(`${earnings.surprises.length}-quarter earnings beat streak`);
     }
 
-    const verdict = numericScore >= 70
-        ? `Strong investment profile with ${strengths.length} key strengths identified`
-        : numericScore >= 50
-            ? `Mixed outlook — review strengths and weaknesses before investing`
-            : `Below-average profile — significant concerns identified`;
+    const verdict =
+        numericScore >= 70
+            ? `Strong investment profile with ${strengths.length} key strengths identified`
+            : numericScore >= 50
+              ? `Mixed outlook — review strengths and weaknesses before investing`
+              : `Below-average profile — significant concerns identified`;
 
-    const recommendation = numericScore >= 80
-        ? 'Consider for growth or core portfolio position'
-        : numericScore >= 60
-            ? 'May suit risk-tolerant investors — monitor closely'
-            : numericScore >= 40
+    const recommendation =
+        numericScore >= 80
+            ? 'Consider for growth or core portfolio position'
+            : numericScore >= 60
+              ? 'May suit risk-tolerant investors — monitor closely'
+              : numericScore >= 40
                 ? 'Exercise caution — significant headwinds identified'
                 : 'High-risk position — only for speculative portfolios';
 
@@ -314,7 +329,8 @@ export function computeAeonScore(
 export function computeMomentum(candles: number[] | null, financials: FinancialData): MomentumData {
     if (!candles || candles.length < 30) {
         return {
-            score: 50, trend: 'flat',
+            score: 50,
+            trend: 'flat',
             shortTerm: { period: '7D', performance: 0 },
             mediumTerm: { period: '30D', performance: 0 },
             longTerm: { period: '90D', performance: 0 },
@@ -337,10 +353,7 @@ export function computeMomentum(candles: number[] | null, financials: FinancialD
     const score = clamp(Math.round(isFinite(rawScore) ? 50 + rawScore * 3 : 50), 0, 100);
 
     const trend: MomentumData['trend'] =
-        score >= 80 ? 'strong-up' :
-            score >= 60 ? 'up' :
-                score >= 40 ? 'flat' :
-                    score >= 20 ? 'down' : 'strong-down';
+        score >= 80 ? 'strong-up' : score >= 60 ? 'up' : score >= 40 ? 'flat' : score >= 20 ? 'down' : 'strong-down';
 
     // Relative strength proxy (vs typical market return ~10%/yr → ~0.27%/week)
     const relativeStrength = clamp(Math.round(50 + (shortPerf - 0.27) * 10), 0, 100);
@@ -368,9 +381,8 @@ export function computeValueGrowth(financials: FinancialData): ValueGrowthProfil
     const pegRatio = pe > 0 && epsGrowthEst > 0 ? round2(pe / epsGrowthEst) : 0;
 
     // P/B: use real book value per share from Finnhub when available, otherwise estimate
-    const bvpsEstimate = (financials.bookValuePerShare && financials.bookValuePerShare > 0)
-        ? financials.bookValuePerShare
-        : (eps > 0 ? eps * 8 : price * 0.5);
+    const bvpsEstimate =
+        financials.bookValuePerShare && financials.bookValuePerShare > 0 ? financials.bookValuePerShare : eps > 0 ? eps * 8 : price * 0.5;
     const priceToBook = bvpsEstimate > 0 ? round2(price / bvpsEstimate) : 0;
 
     // P/S: price / revenue per share (guard against zero revenue)
@@ -395,10 +407,15 @@ export function computeValueGrowth(financials: FinancialData): ValueGrowthProfil
     growthScore = clamp(growthScore, 0, 100);
 
     const classification: ValueGrowthProfile['classification'] =
-        valueScore >= 70 && growthScore < 40 ? 'Deep Value' :
-            valueScore >= 55 && growthScore < 55 ? 'Value' :
-                growthScore >= 70 && valueScore < 40 ? 'High Growth' :
-                    growthScore >= 55 && valueScore < 55 ? 'Growth' : 'Blend';
+        valueScore >= 70 && growthScore < 40
+            ? 'Deep Value'
+            : valueScore >= 55 && growthScore < 55
+              ? 'Value'
+              : growthScore >= 70 && valueScore < 40
+                ? 'High Growth'
+                : growthScore >= 55 && valueScore < 55
+                  ? 'Growth'
+                  : 'Blend';
 
     return {
         classification,
@@ -436,13 +453,14 @@ export function computeRiskReward(financials: FinancialData, candles: number[] |
 
     // Risk level: beta + volatility + drawdown
     const riskLevel = clamp(Math.round(beta * 3 + (maxDrawdownEstimate > 30 ? 3 : maxDrawdownEstimate > 15 ? 1 : 0)), 1, 10);
-    const rewardPotential = clamp(Math.round(upsidePotential / 5 + (financials.eps > 0 ? 2 : 0) + (financials.grossMargin > 40 ? 2 : 0)), 1, 10);
+    const rewardPotential = clamp(
+        Math.round(upsidePotential / 5 + (financials.eps > 0 ? 2 : 0) + (financials.grossMargin > 40 ? 2 : 0)),
+        1,
+        10,
+    );
     const ratio = riskLevel > 0 ? round2(rewardPotential / riskLevel) : 0;
 
-    const rating: RiskRewardProfile['rating'] =
-        ratio >= 2 ? 'Excellent' :
-            ratio >= 1.2 ? 'Good' :
-                ratio >= 0.8 ? 'Fair' : 'Poor';
+    const rating: RiskRewardProfile['rating'] = ratio >= 2 ? 'Excellent' : ratio >= 1.2 ? 'Good' : ratio >= 0.8 ? 'Fair' : 'Poor';
 
     return {
         riskLevel,
@@ -468,23 +486,29 @@ export function computeDividendAnalysis(financials: FinancialData): DividendAnal
 
     // Safety assessment based on payout ratio
     const safety: DividendAnalysis['safety'] =
-        payoutRatio === 0 ? 'moderate' :
-            payoutRatio < 40 ? 'very-safe' :
-                payoutRatio < 60 ? 'safe' :
-                    payoutRatio < 85 ? 'moderate' : 'at-risk';
+        payoutRatio === 0
+            ? 'moderate'
+            : payoutRatio < 40
+              ? 'very-safe'
+              : payoutRatio < 60
+                ? 'safe'
+                : payoutRatio < 85
+                  ? 'moderate'
+                  : 'at-risk';
 
     return {
         yield: yield_,
         annualDividend,
         payoutRatio,
-        growthRate5Y: 0,  // Would need historical data
+        growthRate5Y: 0, // Would need historical data
         yearsOfGrowth: 0,
         exDividendDate: null,
         frequency: 'quarterly',
         safety,
-        interpretation: yield_ > 0
-            ? `${yield_}% yield ($${annualDividend}/share). Payout ratio: ${payoutRatio}% — ${safety}. ${payoutRatio < 60 ? 'Well-covered dividend.' : payoutRatio < 85 ? 'Moderate payout — monitor earnings.' : 'High payout ratio — sustainability concern.'}`
-            : 'No dividend currently paid.',
+        interpretation:
+            yield_ > 0
+                ? `${yield_}% yield ($${annualDividend}/share). Payout ratio: ${payoutRatio}% — ${safety}. ${payoutRatio < 60 ? 'Well-covered dividend.' : payoutRatio < 85 ? 'Moderate payout — monitor earnings.' : 'High payout ratio — sustainability concern.'}`
+                : 'No dividend currently paid.',
     };
 }
 
@@ -501,9 +525,13 @@ export function computeExtendedTechnicals(candles: number[], highs?: number[], l
         upper: round2(bbMean + 2 * bbStdDev),
         middle: round2(bbMean),
         lower: round2(bbMean - 2 * bbStdDev),
-        bandwidth: round2((4 * bbStdDev / bbMean) * 100),
-        signal: latest > bbMean + 2 * bbStdDev ? 'overbought' as const :
-            latest < bbMean - 2 * bbStdDev ? 'oversold' as const : 'neutral' as const,
+        bandwidth: round2(((4 * bbStdDev) / bbMean) * 100),
+        signal:
+            latest > bbMean + 2 * bbStdDev
+                ? ('overbought' as const)
+                : latest < bbMean - 2 * bbStdDev
+                  ? ('oversold' as const)
+                  : ('neutral' as const),
     };
 
     // Stochastic Oscillator (14-day)
@@ -517,8 +545,7 @@ export function computeExtendedTechnicals(candles: number[], highs?: number[], l
     const stochastic = {
         k: stochK,
         d: stochD,
-        signal: stochK > 80 ? 'overbought' as const :
-            stochK < 20 ? 'oversold' as const : 'neutral' as const,
+        signal: stochK > 80 ? ('overbought' as const) : stochK < 20 ? ('oversold' as const) : ('neutral' as const),
     };
 
     // ATR (14-day Average True Range)
@@ -594,7 +621,7 @@ export function computeValuationModels(financials: FinancialData): ValuationMode
     // ─ DCF (Simplified Gordon Growth Model) ─
     // Intrinsic Value = EPS * (1+g)^10 / (1+r)^10, where g=8%, r=10%
     const growthRate = 0.08;
-    const discountRate = 0.10;
+    const discountRate = 0.1;
     let dcfValue = 0;
     if (eps > 0) {
         let pvSum = 0;
@@ -609,13 +636,12 @@ export function computeValuationModels(financials: FinancialData): ValuationMode
 
     // ─ Graham Number ─
     // √(22.5 × EPS × BVPS) — uses real BVPS from Finnhub when available, otherwise estimates as EPS * 8
-    const bvps = (financials.bookValuePerShare && financials.bookValuePerShare > 0)
-        ? financials.bookValuePerShare
-        : (eps > 0 ? eps * 8 : 0);
+    const bvps = financials.bookValuePerShare && financials.bookValuePerShare > 0 ? financials.bookValuePerShare : eps > 0 ? eps * 8 : 0;
     const grahamNumber = eps > 0 && bvps > 0 ? round2(Math.sqrt(22.5 * eps * bvps)) : 0;
-    const bvpsNote = (financials.bookValuePerShare && financials.bookValuePerShare > 0)
-        ? 'Graham Number: √(22.5 × EPS × Book Value Per Share) — using reported BVPS'
-        : 'Graham Number: √(22.5 × EPS × est. BVPS) — BVPS estimated as EPS×8';
+    const bvpsNote =
+        financials.bookValuePerShare && financials.bookValuePerShare > 0
+            ? 'Graham Number: √(22.5 × EPS × Book Value Per Share) — using reported BVPS'
+            : 'Graham Number: √(22.5 × EPS × est. BVPS) — BVPS estimated as EPS×8';
     const grahamUpside = price > 0 && grahamNumber > 0 ? round2(((grahamNumber - price) / price) * 100) : 0;
 
     // ─ Peter Lynch Fair Value ─
@@ -626,7 +652,7 @@ export function computeValuationModels(financials: FinancialData): ValuationMode
     const lynchUpside = price > 0 && lynchFairValue > 0 ? round2(((lynchFairValue - price) / price) * 100) : 0;
 
     // Consensus
-    const estimates = [dcfValue, grahamNumber, lynchFairValue].filter(v => v > 0);
+    const estimates = [dcfValue, grahamNumber, lynchFairValue].filter((v) => v > 0);
     const consensusValue = estimates.length > 0 ? round2(estimates.reduce((a, b) => a + b, 0) / estimates.length) : 0;
     const consensusUpside = price > 0 && consensusValue > 0 ? round2(((consensusValue - price) / price) * 100) : 0;
 
@@ -641,7 +667,7 @@ export function computeValuationModels(financials: FinancialData): ValuationMode
 // ─── Earnings Quality Score ────────────────────────────────────────
 export function computeEarningsQuality(earnings: EarningsData | null): number {
     if (!earnings || !earnings.surprises || earnings.surprises.length === 0) return 50;
-    const beats = earnings.surprises.filter(s => s.beat).length;
+    const beats = earnings.surprises.filter((s) => s.beat).length;
     const total = earnings.surprises.length;
     if (total === 0) return 50;
     const beatRate = beats / total;
@@ -651,7 +677,6 @@ export function computeEarningsQuality(earnings: EarningsData | null): number {
     const score = beatRate * 60 + (total >= 4 ? 10 : 0) + Math.min(30, avgSurprise * 2);
     return clamp(Math.round(score), 0, 100);
 }
-
 
 // ─── Helpers ───────────────────────────────────────────────────────
 function clamp(v: number, min: number, max: number): number {

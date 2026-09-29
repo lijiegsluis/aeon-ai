@@ -11,9 +11,7 @@ const TICKER_MAP_CACHE_TTL = 86_400; // 24 h in seconds
  */
 function buildSecUA(secEmail?: string): { 'User-Agent': string } {
     return {
-        'User-Agent': secEmail
-            ? `AeonNimbusAI ${secEmail}`
-            : 'AeonNimbusAI/1.0 (https://github.com/myProjectsRavi/AeonNimbus-AI)',
+        'User-Agent': secEmail ? `AeonNimbusAI ${secEmail}` : 'AeonNimbusAI/1.0 (https://github.com/myProjectsRavi/AeonNimbus-AI)',
     };
 }
 
@@ -21,7 +19,9 @@ function buildSecUA(secEmail?: string): { 'User-Agent': string } {
  * Fetch the SEC company_tickers.json with Cloudflare Cache API.
  * First request per PoP fetches from SEC; subsequent requests are instant.
  */
-async function fetchTickerMap(secUA: { 'User-Agent': string }): Promise<Record<string, { cik_str: number; ticker: string; title: string }> | null> {
+async function fetchTickerMap(secUA: {
+    'User-Agent': string;
+}): Promise<Record<string, { cik_str: number; ticker: string; title: string }> | null> {
     const cache = caches.default;
     const cacheKey = new Request(TICKER_MAP_URL);
 
@@ -68,10 +68,7 @@ export async function fetchSECFilings(ticker: string, secEmail?: string): Promis
         if (!cik) return { filings: [], cik: null };
 
         // Fetch filings from EDGAR
-        const filingsRes = await fetch(
-            `https://data.sec.gov/submissions/CIK${cik}.json`,
-            { headers: secUA }
-        );
+        const filingsRes = await fetch(`https://data.sec.gov/submissions/CIK${cik}.json`, { headers: secUA });
 
         if (!filingsRes.ok) return { filings: [], cik };
 

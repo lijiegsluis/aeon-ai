@@ -2,25 +2,25 @@
 # events/sentiment, Houston brief). On Render: New → Blueprint → connect this repo
 # with Root Directory set to analytics.
 services:
-  - type: web
-    name: aeon-analytics-api
-    runtime: docker
-    plan: free            # free web service — spins down when idle (~50s cold start)
-    region: frankfurt     # adjust to the region closest to your primary user base
-    healthCheckPath: /health
-    envVars:
-      - key: AEON_ANALYTICS_ALLOWED_ORIGINS
-        sync: false        # set to the deployed frontend's real origin(s), comma-separated
-      - key: AEON_TA_SERVICE_URL
-        sync: false        # set to the deployed Aeon Intelligence API's real URL (used for TA data)
-    # DB defaults to SQLite at ~/.aeon/terminal.db inside the container, which is
-    # EPHEMERAL on Render's free plan — watchlists/alerts/analysis history reset on
-    # every redeploy or restart. For durable storage, add a paid persistent disk and
-    # set AEON_ANALYTICS_DB_PATH to a path under it.
-    #
-    # Known local-only dependencies NOT resolved by this config — features that call
-    # these will fail/degrade in production until each is either deployed separately
-    # and repointed via its own env var, or explicitly descoped:
-    #   - a subprocess this app spawns expects a companion service on 127.0.0.1:8600
-    #   - one endpoint calls a hardcoded http://127.0.0.1:6900 (equity quote) service
-    # Neither companion service has deploy config as part of this plan.
+    - type: web
+      name: aeon-analytics-api
+      runtime: docker
+      plan: free # free web service — spins down when idle (~50s cold start)
+      region: frankfurt # adjust to the region closest to your primary user base
+      healthCheckPath: /health
+      envVars:
+          - key: AEON_ANALYTICS_ALLOWED_ORIGINS
+            sync: false # set to the deployed frontend's real origin(s), comma-separated
+          - key: AEON_TA_SERVICE_URL
+            sync: false # set to the deployed Aeon Intelligence API's real URL (used for TA data)
+      # DB defaults to SQLite at ~/.aeon/terminal.db inside the container, which is
+      # EPHEMERAL on Render's free plan — watchlists/alerts/analysis history reset on
+      # every redeploy or restart. For durable storage, add a paid persistent disk and
+      # set AEON_ANALYTICS_DB_PATH to a path under it.
+      #
+      # Known local-only dependencies NOT resolved by this config — features that call
+      # these will fail/degrade in production until each is either deployed separately
+      # and repointed via its own env var, or explicitly descoped:
+      #   - a subprocess this app spawns expects a companion service on 127.0.0.1:8600
+      #   - one endpoint calls a hardcoded http://127.0.0.1:6900 (equity quote) service
+      # Neither companion service has deploy config as part of this plan.

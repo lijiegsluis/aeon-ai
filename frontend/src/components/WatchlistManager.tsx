@@ -43,7 +43,10 @@ export default function WatchlistManager() {
     };
 
     const createWatchlist = async () => {
-        const tickerList = tickers.split(',').map(t => t.trim().toUpperCase()).filter(Boolean);
+        const tickerList = tickers
+            .split(',')
+            .map((t) => t.trim().toUpperCase())
+            .filter(Boolean);
         if (!name || tickerList.length === 0) return;
 
         try {
@@ -82,17 +85,12 @@ export default function WatchlistManager() {
             <div className="card p-5">
                 <h2 className="section-heading mb-4">Watchlists</h2>
                 <div className="space-y-3">
-                    <input
-                        className="input-field"
-                        placeholder="Watchlist name"
-                        value={name}
-                        onChange={e => setName(e.target.value)}
-                    />
+                    <input className="input-field" placeholder="Watchlist name" value={name} onChange={(e) => setName(e.target.value)} />
                     <textarea
                         className="input-field"
                         placeholder="Tickers (comma-separated): AAPL, MSFT, GOOGL"
                         value={tickers}
-                        onChange={e => setTickers(e.target.value)}
+                        onChange={(e) => setTickers(e.target.value)}
                         rows={3}
                     />
                     <button className="btn-primary" onClick={createWatchlist}>
@@ -102,34 +100,33 @@ export default function WatchlistManager() {
                 {err && <ErrorNote msg={err} />}
             </div>
 
-            {watchlists.map(wl => (
+            {watchlists.map((wl) => (
                 <div key={wl.id} className="card">
                     <div className="p-4 border-b border-white/[0.06]">
                         <div className="flex items-center justify-between mb-2">
                             <h3 className="font-bold text-gold">{wl.name}</h3>
-                            <button
-                                className="btn-primary text-sm"
-                                onClick={() => analyzeWatchlist(wl.id)}
-                                disabled={analyzing === wl.id}
-                            >
+                            <button className="btn-primary text-sm" onClick={() => analyzeWatchlist(wl.id)} disabled={analyzing === wl.id}>
                                 {analyzing === wl.id ? 'Analyzing...' : 'Analyze All'}
                             </button>
                         </div>
                         <div className="flex gap-2 flex-wrap">
-                            {wl.tickers.map(t => (
-                                <span key={t} className="badge-accent text-xs">{t}</span>
+                            {wl.tickers.map((t) => (
+                                <span key={t} className="badge-accent text-xs">
+                                    {t}
+                                </span>
                             ))}
                         </div>
                     </div>
                     {analyzing === wl.id && bulkResults.length > 0 && (
                         <div className="p-4">
                             <div className="space-y-2">
-                                {bulkResults.map(r => (
+                                {bulkResults.map((r) => (
                                     <div key={r.ticker} className="flex items-center justify-between text-sm">
                                         <span className="font-mono">{r.ticker}</span>
                                         {r.status === 'success' ? (
                                             <span className="text-emerald">
-                                                ${r.data?.price} ({r.data?.changePercent > 0 ? '+' : ''}{r.data?.changePercent?.toFixed(2)}%)
+                                                ${r.data?.price} ({r.data?.changePercent > 0 ? '+' : ''}
+                                                {r.data?.changePercent?.toFixed(2)}%)
                                             </span>
                                         ) : (
                                             <span className="text-rose">Error</span>

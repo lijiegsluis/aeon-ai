@@ -9,11 +9,7 @@
 import type { ResearchSources, SECFiling } from './types';
 
 /** Build a complete research sources object for a given ticker */
-export function buildResearchSources(
-    ticker: string,
-    cik: string | null,
-    secFilings: SECFiling[] | null,
-): ResearchSources {
+export function buildResearchSources(ticker: string, cik: string | null, secFilings: SECFiling[] | null): ResearchSources {
     const t = ticker.toUpperCase();
     const tLower = ticker.toLowerCase();
 
@@ -26,7 +22,10 @@ export function buildResearchSources(
             { label: `Finnhub Quote — ${t}`, url: `https://finnhub.io/api/v1/quote?symbol=${t}` },
             { label: `Finnhub Key Metrics — ${t}`, url: `https://finnhub.io/api/v1/stock/metric?symbol=${t}&metric=all` },
             { label: `Finnhub Company Profile — ${t}`, url: `https://finnhub.io/api/v1/stock/profile2?symbol=${t}` },
-            { label: `Finnhub Historical Candles — ${t}`, url: `https://finnhub.io/api/v1/stock/candle?symbol=${t}&resolution=D&count=200` },
+            {
+                label: `Finnhub Historical Candles — ${t}`,
+                url: `https://finnhub.io/api/v1/stock/candle?symbol=${t}&resolution=D&count=200`,
+            },
         ],
 
         technicalAnalysis: [
@@ -40,16 +39,24 @@ export function buildResearchSources(
 
         secFilings: [
             ...(cikNum
-                ? [{ label: `EDGAR Company Page — ${t}`, url: `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${cikNum}&type=&dateb=&owner=include&count=40` }]
-                : [{ label: `EDGAR Search — ${t}`, url: `https://efts.sec.gov/LATEST/search-index?q=${t}&dateRange=custom&startdt=2023-01-01` }]
-            ),
+                ? [
+                      {
+                          label: `EDGAR Company Page — ${t}`,
+                          url: `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${cikNum}&type=&dateb=&owner=include&count=40`,
+                      },
+                  ]
+                : [
+                      {
+                          label: `EDGAR Search — ${t}`,
+                          url: `https://efts.sec.gov/LATEST/search-index?q=${t}&dateRange=custom&startdt=2023-01-01`,
+                      },
+                  ]),
             ...(cikPadded
                 ? [{ label: `SEC XBRL Financial Data`, url: `https://data.sec.gov/api/xbrl/companyfacts/CIK${cikPadded}.json` }]
-                : []
-            ),
+                : []),
             { label: `SEC Full-Text Search — ${t}`, url: `https://efts.sec.gov/LATEST/search-index?q=%22${t}%22` },
             // Include direct filing links from the analysis
-            ...(secFilings ?? []).slice(0, 4).map(f => ({
+            ...(secFilings ?? []).slice(0, 4).map((f) => ({
                 label: `${f.type} — ${f.dateFiled}`,
                 url: f.url,
             })),
@@ -116,14 +123,14 @@ export function buildResearchSources(
  * Order matches the interface field order.
  */
 export const RESEARCH_CATEGORIES: Record<keyof ResearchSources, { icon: string; label: string }> = {
-    financialData:       { icon: '📈', label: 'Financial Data (Finnhub)' },
-    technicalAnalysis:   { icon: '📊', label: 'Technical Analysis Sources' },
-    secFilings:          { icon: '📋', label: 'SEC Filings & Regulatory' },
+    financialData: { icon: '📈', label: 'Financial Data (Finnhub)' },
+    technicalAnalysis: { icon: '📊', label: 'Technical Analysis Sources' },
+    secFilings: { icon: '📋', label: 'SEC Filings & Regulatory' },
     financialStatements: { icon: '💰', label: 'Financial Statements' },
-    companyResearch:     { icon: '🏢', label: 'Company Research' },
-    newsSentiment:       { icon: '📰', label: 'News & Sentiment Sources' },
-    analystData:         { icon: '🎯', label: 'Analyst & Institutional Data' },
+    companyResearch: { icon: '🏢', label: 'Company Research' },
+    newsSentiment: { icon: '📰', label: 'News & Sentiment Sources' },
+    analystData: { icon: '🎯', label: 'Analyst & Institutional Data' },
     valuationReferences: { icon: '🧮', label: 'Valuation Model References' },
-    earningsDividends:   { icon: '🔬', label: 'Earnings & Dividends' },
-    riskCompliance:      { icon: '🛡️', label: 'Risk & Compliance' },
+    earningsDividends: { icon: '🔬', label: 'Earnings & Dividends' },
+    riskCompliance: { icon: '🛡️', label: 'Risk & Compliance' },
 };

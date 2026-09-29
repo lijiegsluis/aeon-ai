@@ -6,11 +6,7 @@ import type { RSSPost } from './rss';
  * for batch sentiment classification. Groq's LPU processes 100 posts
  * in ~2-3 seconds at 750 tokens/second.
  */
-export async function analyzeSentiment(
-    ticker: string,
-    posts: RSSPost[],
-    apiKey: string
-): Promise<SentimentResult> {
+export async function analyzeSentiment(ticker: string, posts: RSSPost[], apiKey: string): Promise<SentimentResult> {
     if (posts.length === 0) {
         return {
             bullishPercent: 0,

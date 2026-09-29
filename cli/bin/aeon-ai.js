@@ -27,8 +27,12 @@ const c = {
 };
 
 // ── Helpers ──────────────────────────────────────────────────────
-function log(msg) { console.log(msg); }
-function step(n, total, msg) { log(`${c.yellow(`[${n}/${total}]`)} ${msg}`); }
+function log(msg) {
+    console.log(msg);
+}
+function step(n, total, msg) {
+    log(`${c.yellow(`[${n}/${total}]`)} ${msg}`);
+}
 
 function run(cmd, cwd) {
     try {
@@ -42,29 +46,37 @@ function run(cmd, cwd) {
 function download(url, dest) {
     return new Promise((resolve, reject) => {
         const follow = (url) => {
-            https.get(url, (res) => {
-                if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-                    follow(res.headers.location);
-                    return;
-                }
-                if (res.statusCode !== 200) {
-                    reject(new Error(`Download failed: HTTP ${res.statusCode}`));
-                    return;
-                }
-                const file = createWriteStream(dest);
-                res.pipe(file);
-                file.on('finish', () => { file.close(); resolve(); });
-                file.on('error', reject);
-            }).on('error', reject);
+            https
+                .get(url, (res) => {
+                    if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                        follow(res.headers.location);
+                        return;
+                    }
+                    if (res.statusCode !== 200) {
+                        reject(new Error(`Download failed: HTTP ${res.statusCode}`));
+                        return;
+                    }
+                    const file = createWriteStream(dest);
+                    res.pipe(file);
+                    file.on('finish', () => {
+                        file.close();
+                        resolve();
+                    });
+                    file.on('error', reject);
+                })
+                .on('error', reject);
         };
         follow(url);
     });
 }
 
 function openBrowser(url) {
-    const cmd = platform() === 'darwin' ? 'open' :
-        platform() === 'win32' ? 'start' : 'xdg-open';
-    try { execSync(`${cmd} ${url}`, { stdio: 'ignore' }); } catch { /* ignore */ }
+    const cmd = platform() === 'darwin' ? 'open' : platform() === 'win32' ? 'start' : 'xdg-open';
+    try {
+        execSync(`${cmd} ${url}`, { stdio: 'ignore' });
+    } catch {
+        /* ignore */
+    }
 }
 
 function killPort(port) {
@@ -75,7 +87,9 @@ function killPort(port) {
         } else {
             execSync(`lsof -ti:${port} | xargs kill -9 2>/dev/null`, { stdio: 'pipe', shell: true });
         }
-    } catch { /* nothing on that port — fine */ }
+    } catch {
+        /* nothing on that port — fine */
+    }
 }
 
 // ── Main ─────────────────────────────────────────────────────────
@@ -111,7 +125,9 @@ async function main() {
             // Extract ZIP
             log('   📦 Extracting...');
             if (platform() === 'win32') {
-                execSync(`powershell -Command "Expand-Archive -Path '${zipPath}' -DestinationPath '${homedir()}' -Force"`, { stdio: 'pipe' });
+                execSync(`powershell -Command "Expand-Archive -Path '${zipPath}' -DestinationPath '${homedir()}' -Force"`, {
+                    stdio: 'pipe',
+                });
             } else {
                 execSync(`unzip -qo "${zipPath}" -d "${homedir()}"`, { stdio: 'pipe' });
             }
@@ -120,10 +136,7 @@ async function main() {
             const extractedDir = join(homedir(), 'AeonNimbus-AI-main');
             if (existsSync(extractedDir)) {
                 if (existsSync(INSTALL_DIR)) {
-                    execSync(platform() === 'win32'
-                        ? `rmdir /s /q "${INSTALL_DIR}"`
-                        : `rm -rf "${INSTALL_DIR}"`,
-                        { stdio: 'pipe' });
+                    execSync(platform() === 'win32' ? `rmdir /s /q "${INSTALL_DIR}"` : `rm -rf "${INSTALL_DIR}"`, { stdio: 'pipe' });
                 }
                 renameSync(extractedDir, INSTALL_DIR);
             }
@@ -131,7 +144,11 @@ async function main() {
             downloaded = true;
         } catch {
             // ZIP failed (likely private repo) — clean up and try git
-            try { unlinkSync(zipPath); } catch { /* */ }
+            try {
+                unlinkSync(zipPath);
+            } catch {
+                /* */
+            }
         }
 
         // Method 2: Fallback to git clone
@@ -249,8 +266,16 @@ async function main() {
     const cleanup = () => {
         log('');
         log(c.yellow('Stopping Aeon Nimbus AI...'));
-        try { worker.kill(); } catch { /* */ }
-        try { frontend.kill(); } catch { /* */ }
+        try {
+            worker.kill();
+        } catch {
+            /* */
+        }
+        try {
+            frontend.kill();
+        } catch {
+            /* */
+        }
         killPort(8787);
         killPort(5173);
         log(c.green('✅ Stopped. Run `npx aeon-ai` to start again.'));
@@ -261,7 +286,7 @@ async function main() {
     process.on('SIGTERM', cleanup);
 
     // Keep alive
-    await new Promise(() => { });
+    await new Promise(() => {});
 }
 
 main().catch((err) => {

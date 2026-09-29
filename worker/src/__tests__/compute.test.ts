@@ -17,9 +17,14 @@ import {
     computeEarningsQuality,
 } from '../compute';
 import type {
-    FinancialData, TechnicalAnalysis, SentimentResult,
-    RiskFactor, InsiderActivity, EarningsData,
-    InvestmentScore, FinancialHealth,
+    FinancialData,
+    TechnicalAnalysis,
+    SentimentResult,
+    RiskFactor,
+    InsiderActivity,
+    EarningsData,
+    InvestmentScore,
+    FinancialHealth,
 } from '../types';
 
 // ─── Shared Test Fixtures ──────────────────────────────────────────
@@ -84,9 +89,7 @@ const bearishSentiment: SentimentResult = {
     themes: ['Regulation fears'],
 };
 
-const lowRisks: RiskFactor[] = [
-    { category: 'regulatory', description: 'Minor regulatory change', severity: 'low' },
-];
+const lowRisks: RiskFactor[] = [{ category: 'regulatory', description: 'Minor regulatory change', severity: 'low' }];
 
 const highRisks: RiskFactor[] = [
     { category: 'regulatory', description: 'Antitrust investigation', severity: 'high' },
@@ -142,13 +145,19 @@ function makeFlatCandles(count: number, price: number): number[] {
     return Array.from({ length: count }, () => price);
 }
 
-
 // ═══════════════════════════════════════════════════════════════════
 // 1. computeInvestmentScore
 // ═══════════════════════════════════════════════════════════════════
 describe('computeInvestmentScore', () => {
     it('returns overall score between 0 and 100', () => {
-        const result = computeInvestmentScore(baseFinancials, bullishTechnicals, bullishSentiment, lowRisks, bullishInsider, strongEarnings);
+        const result = computeInvestmentScore(
+            baseFinancials,
+            bullishTechnicals,
+            bullishSentiment,
+            lowRisks,
+            bullishInsider,
+            strongEarnings,
+        );
         expect(result.overall).toBeGreaterThanOrEqual(0);
         expect(result.overall).toBeLessThanOrEqual(100);
     });
@@ -177,7 +186,14 @@ describe('computeInvestmentScore', () => {
     });
 
     it('includes all 5 breakdown components', () => {
-        const result = computeInvestmentScore(baseFinancials, bullishTechnicals, bullishSentiment, lowRisks, bullishInsider, strongEarnings);
+        const result = computeInvestmentScore(
+            baseFinancials,
+            bullishTechnicals,
+            bullishSentiment,
+            lowRisks,
+            bullishInsider,
+            strongEarnings,
+        );
         expect(result.breakdown).toHaveProperty('technicalScore');
         expect(result.breakdown).toHaveProperty('fundamentalScore');
         expect(result.breakdown).toHaveProperty('sentimentScore');
@@ -201,12 +217,18 @@ describe('computeInvestmentScore', () => {
     });
 
     it('produces a summary string', () => {
-        const result = computeInvestmentScore(baseFinancials, bullishTechnicals, bullishSentiment, lowRisks, bullishInsider, strongEarnings);
+        const result = computeInvestmentScore(
+            baseFinancials,
+            bullishTechnicals,
+            bullishSentiment,
+            lowRisks,
+            bullishInsider,
+            strongEarnings,
+        );
         expect(result.summary).toContain('Overall');
         expect(result.summary.length).toBeGreaterThan(20);
     });
 });
-
 
 // ═══════════════════════════════════════════════════════════════════
 // 2. computeFinancialHealth
@@ -260,7 +282,6 @@ describe('computeFinancialHealth', () => {
     });
 });
 
-
 // ═══════════════════════════════════════════════════════════════════
 // 3. computeAeonScore
 // ═══════════════════════════════════════════════════════════════════
@@ -269,8 +290,11 @@ describe('computeAeonScore', () => {
         overall,
         signal: overall >= 65 ? 'Buy' : 'Hold',
         breakdown: {
-            technicalScore: overall, fundamentalScore: overall,
-            sentimentScore: overall, riskScore: overall, insiderScore: overall,
+            technicalScore: overall,
+            fundamentalScore: overall,
+            sentimentScore: overall,
+            riskScore: overall,
+            insiderScore: overall,
         },
         summary: '',
     });
@@ -280,21 +304,36 @@ describe('computeAeonScore', () => {
         altmanZone: zone,
         piotroskiFScore: rating === 'strong' ? 8 : rating === 'moderate' ? 5 : 2,
         piotroskiRating: rating,
-        currentRatio: 2, quickRatio: 1.6, interestCoverage: 10,
-        pricePositionPercent: 60, volatilityCategory: 'moderate',
+        currentRatio: 2,
+        quickRatio: 1.6,
+        interestCoverage: 10,
+        pricePositionPercent: 60,
+        volatilityCategory: 'moderate',
         healthSummary: '',
         altmanIsEstimated: true,
         piotroskiIsEstimated: true,
     });
 
     it('returns grade between A+ and F', () => {
-        const result = computeAeonScore(makeInvScore(75), makeHealth('safe', 'strong'), bullishTechnicals, bullishSentiment, strongEarnings);
+        const result = computeAeonScore(
+            makeInvScore(75),
+            makeHealth('safe', 'strong'),
+            bullishTechnicals,
+            bullishSentiment,
+            strongEarnings,
+        );
         const validGrades = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D', 'F'];
         expect(validGrades).toContain(result.grade);
     });
 
     it('clamps numericScore to 0-100', () => {
-        const result = computeAeonScore(makeInvScore(95), makeHealth('safe', 'strong'), bullishTechnicals, bullishSentiment, strongEarnings);
+        const result = computeAeonScore(
+            makeInvScore(95),
+            makeHealth('safe', 'strong'),
+            bullishTechnicals,
+            bullishSentiment,
+            strongEarnings,
+        );
         expect(result.numericScore).toBeLessThanOrEqual(100);
         expect(result.numericScore).toBeGreaterThanOrEqual(0);
     });
@@ -312,24 +351,41 @@ describe('computeAeonScore', () => {
     });
 
     it('populates strengths and weaknesses arrays', () => {
-        const result = computeAeonScore(makeInvScore(75), makeHealth('safe', 'strong'), bullishTechnicals, bullishSentiment, strongEarnings);
+        const result = computeAeonScore(
+            makeInvScore(75),
+            makeHealth('safe', 'strong'),
+            bullishTechnicals,
+            bullishSentiment,
+            strongEarnings,
+        );
         expect(Array.isArray(result.strengths)).toBe(true);
         expect(Array.isArray(result.weaknesses)).toBe(true);
         expect(result.strengths.length).toBeGreaterThan(0);
     });
 
     it('returns confidence based on data availability', () => {
-        const full = computeAeonScore(makeInvScore(70), makeHealth('grey', 'moderate'), bullishTechnicals, bullishSentiment, strongEarnings);
+        const full = computeAeonScore(
+            makeInvScore(70),
+            makeHealth('grey', 'moderate'),
+            bullishTechnicals,
+            bullishSentiment,
+            strongEarnings,
+        );
         const minimal = computeAeonScore(makeInvScore(70), makeHealth('grey', 'moderate'), null, null, null);
         expect(full.confidence).toBeGreaterThan(minimal.confidence);
     });
 
     it('sets verdict for strong profile', () => {
-        const result = computeAeonScore(makeInvScore(80), makeHealth('safe', 'strong'), bullishTechnicals, bullishSentiment, strongEarnings);
+        const result = computeAeonScore(
+            makeInvScore(80),
+            makeHealth('safe', 'strong'),
+            bullishTechnicals,
+            bullishSentiment,
+            strongEarnings,
+        );
         expect(result.verdict).toContain('Strong');
     });
 });
-
 
 // ═══════════════════════════════════════════════════════════════════
 // 4. computeMomentum
@@ -382,7 +438,6 @@ describe('computeMomentum', () => {
     });
 });
 
-
 // ═══════════════════════════════════════════════════════════════════
 // 5. computeValueGrowth
 // ═══════════════════════════════════════════════════════════════════
@@ -423,7 +478,6 @@ describe('computeValueGrowth', () => {
         expect(result.interpretation).toContain('profile');
     });
 });
-
 
 // ═══════════════════════════════════════════════════════════════════
 // 6. computeRiskReward
@@ -471,7 +525,6 @@ describe('computeRiskReward', () => {
     });
 });
 
-
 // ═══════════════════════════════════════════════════════════════════
 // 7. computeDividendAnalysis
 // ═══════════════════════════════════════════════════════════════════
@@ -512,7 +565,6 @@ describe('computeDividendAnalysis', () => {
         expect(result.frequency).toBe('quarterly');
     });
 });
-
 
 // ═══════════════════════════════════════════════════════════════════
 // 8. computeExtendedTechnicals
@@ -575,7 +627,6 @@ describe('computeExtendedTechnicals', () => {
     });
 });
 
-
 // ═══════════════════════════════════════════════════════════════════
 // 9. computeValuationModels
 // ═══════════════════════════════════════════════════════════════════
@@ -603,7 +654,7 @@ describe('computeValuationModels', () => {
 
     it('computes consensus as average of all models', () => {
         const result = computeValuationModels(baseFinancials);
-        const estimates = [result.dcf.value, result.graham.value, result.lynch.value].filter(v => v > 0);
+        const estimates = [result.dcf.value, result.graham.value, result.lynch.value].filter((v) => v > 0);
         const expectedConsensus = +(estimates.reduce((a, b) => a + b, 0) / estimates.length).toFixed(2);
         expect(Math.abs(result.consensus.value - expectedConsensus)).toBeLessThan(0.1);
     });
@@ -622,7 +673,6 @@ describe('computeValuationModels', () => {
         }
     });
 });
-
 
 // ═══════════════════════════════════════════════════════════════════
 // 10. computeEarningsQuality
@@ -655,7 +705,8 @@ describe('computeEarningsQuality', () => {
     it('awards bonus for >= 4 quarters of data', () => {
         const twoQtrs: EarningsData = {
             surprises: strongEarnings.surprises.slice(0, 2),
-            streak: '', nextEarningsDate: null,
+            streak: '',
+            nextEarningsDate: null,
         };
         const fourQtrs = strongEarnings;
         const twoScore = computeEarningsQuality(twoQtrs);
@@ -664,18 +715,33 @@ describe('computeEarningsQuality', () => {
     });
 });
 
-
 // ═══════════════════════════════════════════════════════════════════
 // Cross-cutting: Edge Cases & Boundary Tests
 // ═══════════════════════════════════════════════════════════════════
 describe('edge cases', () => {
     it('handles all-zero financials without crashing', () => {
         const zeroFinancials: FinancialData = {
-            ticker: 'ZERO', companyName: 'Zero Corp', price: 0, change: 0,
-            changePercent: 0, open: 0, high: 0, low: 0, previousClose: 0,
-            volume: 0, marketCap: 0, pe: 0, eps: 0, beta: 0,
-            weekHigh52: 0, weekLow52: 0, revenue: 0, grossMargin: 0,
-            debtToEquity: 0, dividendYield: 0, sector: '',
+            ticker: 'ZERO',
+            companyName: 'Zero Corp',
+            price: 0,
+            change: 0,
+            changePercent: 0,
+            open: 0,
+            high: 0,
+            low: 0,
+            previousClose: 0,
+            volume: 0,
+            marketCap: 0,
+            pe: 0,
+            eps: 0,
+            beta: 0,
+            weekHigh52: 0,
+            weekLow52: 0,
+            revenue: 0,
+            grossMargin: 0,
+            debtToEquity: 0,
+            dividendYield: 0,
+            sector: '',
         };
         expect(() => computeInvestmentScore(zeroFinancials, null, null, [], null, null)).not.toThrow();
         expect(() => computeFinancialHealth(zeroFinancials, null)).not.toThrow();
