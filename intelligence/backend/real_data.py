@@ -462,6 +462,39 @@ def get_real_news(limit: int = 30) -> List[Dict[str, Any]]:
 _COINS = [("bitcoin", "BTC", "Bitcoin"), ("ethereum", "ETH", "Ethereum"), ("solana", "SOL", "Solana")]
 
 
+_KRAKEN_PAIRS = {"BTC": "XBTUSD", "ETH": "ETHUSD", "SOL": "SOLUSD"}
+# Kraken answers some pairs under their legacy names
+_KRAKEN_KEYS = {"BTC": ("XBTUSD", "XXBTZUSD"), "ETH": ("ETHUSD", "XETHZUSD"), "SOL": ("SOLUSD",)}
+
+
+def _kraken_prices() -> Optional[List[Dict[str, Any]]]:
+    """Keyless fallback when CoinGecko refuses the host (it 403s many cloud IPs).
+    Kraken's public ticker gives last trade and today's open (UTC), so the change
+    is since the UTC day open rather than a rolling 24h; no market cap."""
+    resp = _get("https://api.kraken.com/0/public/Ticker", params={"pair": ",".join(_KRAKEN_PAIRS.values())},
+                source_name="Kraken (crypto fallback)")
+    if not resp:
+        return None
+    try:
+        result = resp.json().get("result") or {}
+        out = []
+        for idx, (_, symbol, name) in enumerate(_COINS):
+            d = next((result[k] for k in _KRAKEN_KEYS[symbol] if k in result), None)
+            if not d:
+                continue
+            last, opened = float(d["c"][0]), float(d["o"])
+            out.append({
+                "id": idx + 1, "symbol": symbol, "name": name, "price": last,
+                "change_24h": round((last / opened - 1) * 100, 2) if opened else None,
+                "market_cap": None, "volume_24h": float(d["v"][1]) * last,
+                "source": "Kraken", "timestamp": datetime.now().isoformat(),
+            })
+        return out or None
+    except Exception as e:
+        print(f"[real_data] kraken parse error: {e}")
+        return None
+
+
 def get_crypto_prices() -> Optional[List[Dict[str, Any]]]:
     ids = ",".join(c[0] for c in _COINS)
     resp = _get(
@@ -471,7 +504,7 @@ def get_crypto_prices() -> Optional[List[Dict[str, Any]]]:
         source_name="CoinGecko",
     )
     if not resp:
-        return None
+        return _kraken_prices()
     try:
         data = resp.json()
         out = []

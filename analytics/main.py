@@ -833,7 +833,7 @@ def fusion_quote(ticker: str):
     spread_bps = f(10000 * abs(indep_vals[0] - indep_vals[1]) / indep_vals[0], 1)
     return {"ticker": t, "sources": sources, "spreadBps": spread_bps,
             "verified": spread_bps < 50,
-            "note": ("independent sources (yfinance, Stooq) agree" if spread_bps < 50
+            "note": (f"independent sources ({' vs '.join(independent)}) agree" if spread_bps < 50
                      else "independent sources disagree — data may be stale on one side"),
             "methodology": "Yahoo (yfinance or its chart API) and Nasdaq (Stooq as a backup) are the independent upstreams checked; "
                             "OpenBB is informational only when it's backed by the yfinance provider."}

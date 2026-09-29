@@ -70,3 +70,16 @@ def test_bls_ics_parser_unfolds_lines_and_reads_times():
     assert out["nfp"] == [datetime(2026, 11, 6, 8, 30)]
     assert out["cpi"] == [datetime(2026, 11, 10, 8, 30)]
     assert "ppi" not in out
+
+
+def test_kraken_fallback_parses_legacy_pair_names(monkeypatch):
+    class Resp:
+        def json(self):
+            return {"error": [], "result": {
+                "XXBTZUSD": {"c": ["65000.0", "0.1"], "o": "64000.0", "v": ["10", "100"]},
+                "XETHZUSD": {"c": ["3000.0", "1"], "o": "3100.0", "v": ["50", "500"]},
+            }}
+    monkeypatch.setattr(real_data, "_get", lambda *a, **k: Resp())
+    out = {c["symbol"]: c for c in real_data._kraken_prices()}
+    assert out["BTC"]["price"] == 65000.0 and out["BTC"]["change_24h"] == 1.56
+    assert out["ETH"]["change_24h"] == -3.23 and out["BTC"]["source"] == "Kraken" and "SOL" not in out
