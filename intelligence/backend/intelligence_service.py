@@ -287,7 +287,10 @@ def generate_insider_trades():
     """Real SEC Form 4 open-market trades, plus whether this call fetched fresh data.
     When SEC is unreachable the previous real batch is returned unchanged (flag False,
     so it isn't re-persisted); nothing is ever invented."""
-    real_trades = real_data.get_recent_form4_trades(max_filings=30)
+    # SEC's "current filings" atom feed caps out around 100 entries regardless of the
+    # count requested (verified directly against the live feed), so 80 gets close to
+    # the real ceiling per cycle without wasting requests on a count SEC won't honor.
+    real_trades = real_data.get_recent_form4_trades(max_filings=80)
     if not real_trades:
         # Keep whatever real trades we already have rather than inventing any.
         return INSIDER_TRADES, False

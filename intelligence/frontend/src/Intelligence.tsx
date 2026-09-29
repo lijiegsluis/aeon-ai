@@ -215,17 +215,23 @@ interface AIPrediction {
     supporting_signals?: string[];
     supporting_data?: string[];
     historical_precedent?: string;
-    predicted_outcome?: {
-        if_correct?: string;
-        if_wrong?: string;
-        if_approved?: string;
-        if_delayed?: string;
-        if_rejected?: string;
-        if_miss_to_3_2?: string;
-        if_inline_3_3?: string;
-        if_beat_to_3_4_plus?: string;
-        expected_value?: string;
-    };
+    // Causal/contrarian predictions from the live backend send this as a plain
+    // sentence (see prediction_engine.py's PREDICTIONS_SYSTEM_PROMPT schema,
+    // "predicted_outcome": str). The keyed-scenario shape below isn't something
+    // the backend actually produces today; keeping it as a fallback shape only.
+    predicted_outcome?:
+        | string
+        | {
+              if_correct?: string;
+              if_wrong?: string;
+              if_approved?: string;
+              if_delayed?: string;
+              if_rejected?: string;
+              if_miss_to_3_2?: string;
+              if_inline_3_3?: string;
+              if_beat_to_3_4_plus?: string;
+              expected_value?: string;
+          };
     predicted_move?: string;
     reasoning: string;
     adversarial_test?: string;
@@ -2054,15 +2060,24 @@ function Intelligence() {
                                                 </ul>
                                             </div>
                                         )}
-                                        {pred.predicted_outcome && (
+                                        {pred.predicted_outcome && typeof pred.predicted_outcome === 'string' && (
+                                            <p className="text-success">
+                                                <strong>Predicted Outcome:</strong> {pred.predicted_outcome}
+                                            </p>
+                                        )}
+                                        {pred.predicted_outcome && typeof pred.predicted_outcome === 'object' && (
                                             <div className="outcome-box">
                                                 <strong>Expected Outcomes:</strong>
-                                                <p className="text-success">
-                                                    <strong>If Correct:</strong> {pred.predicted_outcome.if_correct}
-                                                </p>
-                                                <p className="text-danger">
-                                                    <strong>If Wrong:</strong> {pred.predicted_outcome.if_wrong}
-                                                </p>
+                                                {pred.predicted_outcome.if_correct && (
+                                                    <p className="text-success">
+                                                        <strong>If Correct:</strong> {pred.predicted_outcome.if_correct}
+                                                    </p>
+                                                )}
+                                                {pred.predicted_outcome.if_wrong && (
+                                                    <p className="text-danger">
+                                                        <strong>If Wrong:</strong> {pred.predicted_outcome.if_wrong}
+                                                    </p>
+                                                )}
                                                 {pred.predicted_outcome.expected_value && (
                                                     <p className="text-warning">
                                                         <strong>Expected Value:</strong> {pred.predicted_outcome.expected_value}
@@ -2160,16 +2175,15 @@ function Intelligence() {
                                             </div>
                                         )}
                                         {pred.predicted_outcome && (
-                                            <div className="text-success">
-                                                <strong>Predicted Outcome:</strong>
-                                                {Object.entries(pred.predicted_outcome)
-                                                    .filter(([, v]) => v)
-                                                    .map(([k, v]) => (
-                                                        <p key={k}>
-                                                            {k.replace(/_/g, ' ')}: {v}
-                                                        </p>
-                                                    ))}
-                                            </div>
+                                            <p className="text-success">
+                                                <strong>Predicted Outcome:</strong>{' '}
+                                                {typeof pred.predicted_outcome === 'string'
+                                                    ? pred.predicted_outcome
+                                                    : Object.entries(pred.predicted_outcome)
+                                                          .filter(([, v]) => v)
+                                                          .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`)
+                                                          .join(' · ')}
+                                            </p>
                                         )}
                                     </div>
                                 </div>
@@ -2213,16 +2227,15 @@ function Intelligence() {
                                             </div>
                                         )}
                                         {pred.predicted_outcome && (
-                                            <div className="text-orange">
-                                                <strong>Predicted Outcome:</strong>
-                                                {Object.entries(pred.predicted_outcome)
-                                                    .filter(([, v]) => v)
-                                                    .map(([k, v]) => (
-                                                        <p key={k}>
-                                                            {k.replace(/_/g, ' ')}: {v}
-                                                        </p>
-                                                    ))}
-                                            </div>
+                                            <p className="text-orange">
+                                                <strong>Predicted Outcome:</strong>{' '}
+                                                {typeof pred.predicted_outcome === 'string'
+                                                    ? pred.predicted_outcome
+                                                    : Object.entries(pred.predicted_outcome)
+                                                          .filter(([, v]) => v)
+                                                          .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`)
+                                                          .join(' · ')}
+                                            </p>
                                         )}
                                     </div>
                                 </div>

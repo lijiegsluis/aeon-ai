@@ -3,12 +3,20 @@ Aeon Intelligence - Real Telegram Breaking News Feed
 
 Connects (read-only listener, never sends messages) to the user's real
 @Tradeul_Breaking_News Telegram channel using their existing, already-
-authorized Telethon session (copied from the Aeon Nimbus Terminal analytics
-project so the two apps don't fight over the same session file). Messages
-are turned into news-item-shaped dicts so they flow into the same NEWS list,
-/api/news endpoints, AI grounding context, and history_db persistence that
-real RSS news already uses - just with a "Telegram:" source label so they
-stay distinguishable in the UI.
+authorized Telethon session. Messages are turned into news-item-shaped dicts
+so they flow into the same NEWS list, /api/news endpoints, AI grounding
+context, and history_db persistence that real RSS news already uses - just
+with a "Telegram:" source label so they stay distinguishable in the UI.
+
+Two ways to supply the session, tried in this order:
+1. Env vars TELEGRAM_API_ID / TELEGRAM_API_HASH / TELEGRAM_CHANNEL_USERNAME /
+   TELEGRAM_SESSION_STRING (a Telethon StringSession) - what production
+   (Render) uses, since a live login credential can't ship inside the
+   Docker image (see .dockerignore) but can be set as a private env var on
+   the one service that needs it.
+2. A local telegram_config.ini + a .session file next to this module - what
+   local dev uses, so a contributor's own already-authorized session keeps
+   working without needing to export a string.
 
 Fails soft everywhere: if credentials are missing, the session has expired,
 or Telethon/network errors occur, this module logs and simply contributes no
@@ -16,6 +24,7 @@ messages - it must never crash the API.
 """
 
 import configparser
+import os
 import re
 import threading
 import time
@@ -25,7 +34,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from real_data import WATCHLIST, _classify_sentiment, _extract_tickers
 
-_CONFIG_PATH = Path("/Users/lijie/aeon-ai/analytics/telegram_config.ini")
+_CONFIG_PATH = Path(__file__).parent / "telegram_config.ini"
 _SESSION_PATH = Path(__file__).parent / "aeon_intelligence_telegram"
 
 SOURCE_LABEL = "Telegram: Tradeul_Breaking_News"
@@ -64,21 +73,54 @@ def _prune_locked():
     _status["message_count"] = len(TELEGRAM_MESSAGES)
 
 
-def _load_config() -> Optional[Dict[str, str]]:
-    try:
-        if not _CONFIG_PATH.exists() or not _SESSION_PATH.with_suffix(".session").exists():
+_ENV_API_ID = "TELEGRAM_API_ID"
+_ENV_API_HASH = "TELEGRAM_API_HASH"
+_ENV_CHANNEL = "TELEGRAM_CHANNEL_USERNAME"
+_ENV_SESSION_STRING = "TELEGRAM_SESSION_STRING"
+
+# Fallback local config path used before this module moved to reading its own
+# directory - kept so an existing local dev checkout doesn't need to move its
+# file to keep working.
+_LEGACY_CONFIG_PATH = Path("/Users/lijie/aeon-ai/analytics/telegram_config.ini")
+
+
+def _load_config() -> Optional[Dict[str, Any]]:
+    """Returns {api_id, api_hash, channel_username, session} where `session` is
+    either a Telethon StringSession (env-var path, e.g. production) or a plain
+    file path string (local .session file path, e.g. local dev)."""
+    api_id = os.environ.get(_ENV_API_ID)
+    api_hash = os.environ.get(_ENV_API_HASH)
+    session_string = os.environ.get(_ENV_SESSION_STRING)
+    channel = os.environ.get(_ENV_CHANNEL) or "Tradeul_Breaking_News"
+    if api_id and api_hash and session_string:
+        try:
+            from telethon.sessions import StringSession
+            return {
+                "api_id": int(api_id),
+                "api_hash": api_hash,
+                "channel_username": channel,
+                "session": StringSession(session_string),
+            }
+        except Exception as e:
+            print(f"[telegram_feed] env session config invalid: {e}")
             return None
-        cfg = configparser.ConfigParser()
-        cfg.read(_CONFIG_PATH)
-        section = cfg["telegram"]
-        return {
-            "api_id": int(section["api_id"]),
-            "api_hash": section["api_hash"],
-            "channel_username": section["channel_username"],
-        }
-    except Exception as e:
-        print(f"[telegram_feed] config load failed: {e}")
-        return None
+
+    for config_path in (_CONFIG_PATH, _LEGACY_CONFIG_PATH):
+        try:
+            if not config_path.exists() or not _SESSION_PATH.with_suffix(".session").exists():
+                continue
+            cfg = configparser.ConfigParser()
+            cfg.read(config_path)
+            section = cfg["telegram"]
+            return {
+                "api_id": int(section["api_id"]),
+                "api_hash": section["api_hash"],
+                "channel_username": section["channel_username"],
+                "session": str(_SESSION_PATH),
+            }
+        except Exception as e:
+            print(f"[telegram_feed] config load failed ({config_path}): {e}")
+    return None
 
 
 def _to_news_item(text: str, when: datetime) -> Dict[str, Any]:
@@ -136,7 +178,7 @@ def _run_client_forever(on_new_message: Optional[Callable[[Dict[str, Any]], None
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    client = TelegramClient(str(_SESSION_PATH), cfg["api_id"], cfg["api_hash"])
+    client = TelegramClient(cfg["session"], cfg["api_id"], cfg["api_hash"])
 
     async def _main():
         await client.connect()
