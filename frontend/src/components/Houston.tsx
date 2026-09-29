@@ -7,7 +7,8 @@ import { useEffect, useState } from 'react';
 import { jget, jpost } from '../utils/api';
 import { ErrorNote } from './Terminal';
 import { SectionCard } from './report/shared';
-import { ANALYTICS_URL } from '../config';
+import MiniMarkdown from './MiniMarkdown';
+import { ANALYTICS_URL, PLATFORM_APP_URL, intelligenceTickerUrl } from '../config';
 
 const AN = ANALYTICS_URL;
 
@@ -17,6 +18,7 @@ function BriefPanel() {
     const [brief, setBrief] = useState<string | null>(null);
     const [day, setDay] = useState('');
     const [running, setRunning] = useState(false);
+    const [native, setNative] = useState(false);
     const [err, setErr] = useState('');
 
     useEffect(() => {
@@ -37,9 +39,10 @@ function BriefPanel() {
         setRunning(true);
         setErr('');
         try {
-            const d = await jpost<{ ok: boolean; brief: string; day: string }>(`${AN}/houston/run`, {});
+            const d = await jpost<{ ok: boolean; brief: string; day: string; native?: boolean }>(`${AN}/houston/run`, {});
             setDay(d.day);
             setBrief(d.brief);
+            setNative(!!d.native);
         } catch (e: any) {
             setErr(e.message);
         } finally {
@@ -60,10 +63,15 @@ function BriefPanel() {
                     <ErrorNote msg={err} />
                 </div>
             )}
+            {native && brief && (
+                <p className="mb-2 text-xs text-white/40">
+                    Built from your events, watchlists, alerts and thesis gates (houston.py isn't installed on this machine).
+                </p>
+            )}
             {brief ? (
-                <pre className="text-sm leading-relaxed whitespace-pre-wrap" style={{ fontFamily: 'inherit' }}>
-                    {brief}
-                </pre>
+                <div className="leading-relaxed">
+                    <MiniMarkdown text={brief} />
+                </div>
             ) : (
                 !err && (
                     <div className="text-ink2 text-sm text-center py-6">
@@ -181,17 +189,17 @@ function GatesPanel() {
                         {g.stop && <span className="text-xs text-rose">Stop {g.stop}</span>}
                         {g.size && <span className="text-xs text-ink2">| {g.size}</span>}
                         <a
-                            href={`http://localhost:5175/?ticker=${encodeURIComponent(g.ticker)}`}
+                            href={intelligenceTickerUrl(g.ticker)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-xs"
                             style={{ color: 'var(--gold)', opacity: 0.75 }}
-                            title="Opens Aeon Intelligence's own event view for this ticker — separate demo data, not shared with this app"
+                            title="Event timing, news and insider activity for this ticker in Aeon Intelligence"
                         >
                             View in Aeon Intelligence ↗
                         </a>
                         <a
-                            href="http://localhost:5174"
+                            href={PLATFORM_APP_URL}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-xs"

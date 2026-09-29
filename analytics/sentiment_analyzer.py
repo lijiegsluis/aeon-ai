@@ -13,6 +13,12 @@ import yfinance as yf
 from database import get_db
 
 
+def _has_word(text_lower: str, phrase: str) -> bool:
+    """Whole-word match — plain substring tests made 'ev' (Tesla) match 'event'
+    and 'every', 'eth' match 'whether', 'mac' match 'macro' and so on."""
+    return re.search(rf"(?<![a-z0-9]){re.escape(phrase)}(?![a-z0-9])", text_lower) is not None
+
+
 class SentimentAnalyzer:
     def __init__(self):
         self.asset_keywords = self._load_asset_mappings()
@@ -22,13 +28,13 @@ class SentimentAnalyzer:
         """Map keywords to tradeable assets"""
         return {
             'AAPL': ['apple', 'iphone', 'ipad', 'mac', 'ios'],
-            'MSFT': ['microsoft', 'windows', 'azure', 'office', 'xbox'],
+            'MSFT': ['microsoft', 'windows', 'azure', 'microsoft 365', 'xbox'],
             'NVDA': ['nvidia', 'gpu', 'ai chip', 'graphics card'],
             'TSLA': ['tesla', 'elon musk', 'electric vehicle', 'ev'],
             'META': ['meta', 'facebook', 'instagram', 'whatsapp', 'metaverse'],
-            'GOOGL': ['google', 'alphabet', 'youtube', 'android', 'search'],
-            'AMZN': ['amazon', 'aws', 'prime', 'e-commerce'],
-            'SPY': ['s&p 500', 'stock market', 'broad market', 'index'],
+            'GOOGL': ['google', 'alphabet', 'youtube', 'android', 'google search'],
+            'AMZN': ['amazon', 'aws', 'prime video', 'e-commerce'],
+            'SPY': ['s&p 500', 'stock market', 'broad market', 'stock index'],
             'QQQ': ['nasdaq', 'tech stocks', 'technology'],
             'GLD': ['gold', 'precious metals', 'safe haven'],
             'USO': ['oil', 'crude', 'petroleum', 'energy'],
@@ -113,7 +119,7 @@ class SentimentAnalyzer:
         # Keyword-based detection
         for ticker, keywords in self.asset_keywords.items():
             for keyword in keywords:
-                if keyword in text_lower:
+                if _has_word(text_lower, keyword):
                     if not any(a['ticker'] == ticker for a in affected):
                         affected.append({
                             'ticker': ticker,
@@ -124,7 +130,7 @@ class SentimentAnalyzer:
 
         # Sector-level impact
         for sector, etfs in self.sector_mappings.items():
-            if sector.lower() in text_lower:
+            if _has_word(text_lower, sector.lower()):
                 for etf in etfs[:1]:  # Add primary ETF
                     if not any(a['ticker'] == etf for a in affected):
                         affected.append({
@@ -216,8 +222,8 @@ class SentimentAnalyzer:
         negative_words = ['decline', 'miss', 'weak', 'negative', 'bearish', 'drop', 'fall', 'crisis']
 
         text_lower = text.lower()
-        score += sum(10 for word in positive_words if word in text_lower)
-        score -= sum(10 for word in negative_words if word in text_lower)
+        score += sum(10 for word in positive_words if _has_word(text_lower, word))
+        score -= sum(10 for word in negative_words if _has_word(text_lower, word))
 
         # Category-based adjustment
         if category == 'geopolitical':
@@ -301,6 +307,9 @@ class SentimentAnalyzer:
         """Project impact by timeframe"""
         base_direction = "UP" if sentiment['score'] > 0 else "DOWN"
 
+        if days < 0:
+            return {'today': "Event has passed", 'this_week': "Watch the post-event reaction",
+                    'until_event': "n/a"}
         return {
             'today': f"Minimal - event still {days} days away",
             'this_week': f"Building momentum - expect gradual move {base_direction}",

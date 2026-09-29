@@ -14,16 +14,16 @@ echo "📅 Step 1: Syncing Economic Calendar..."
 python3 backend/calendar_sync.py
 echo ""
 
-# Step 2: Start Intelligence API (Port 8001)
-echo "🚀 Step 2: Starting Intelligence API (Port 8001)..."
-lsof -ti:8001 | xargs kill -9 2>/dev/null
+# Step 2: Start Intelligence API (Port 8003)
+echo "🚀 Step 2: Starting Intelligence API (Port 8003)..."
+lsof -ti:8003 | xargs kill -9 2>/dev/null
 python3 backend/intelligence_service.py > /tmp/intelligence_api.log 2>&1 &
 INTEL_PID=$!
 echo $INTEL_PID > /tmp/intelligence_api.pid
 sleep 3
 
 # Check if API started
-if curl -s http://localhost:8001/health > /dev/null; then
+if curl -s http://localhost:8003/health > /dev/null; then
     echo "✓ Intelligence API running (PID: $INTEL_PID)"
 else
     echo "✗ Intelligence API failed to start"
@@ -76,7 +76,7 @@ echo "✅ SYSTEM READY"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "🌐 Services:"
-echo "   Intelligence API:    http://localhost:8001"
+echo "   Intelligence API:    http://localhost:8003"
 echo "   Intelligence App:    http://localhost:5175"
 echo ""
 echo "📊 Features:"
@@ -91,7 +91,7 @@ echo "   API:       /tmp/intelligence_api.log"
 echo "   Frontend:  /tmp/intelligence_frontend.log"
 echo ""
 echo "⚡ Quick Stats:"
-curl -s http://localhost:8001/api/stats | python3 -m json.tool
+curl -s http://localhost:8003/api/stats | python3 -m json.tool
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "🎯 Open http://localhost:5175 to access Intelligence"

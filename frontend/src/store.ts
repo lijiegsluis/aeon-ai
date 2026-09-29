@@ -41,7 +41,7 @@ export type {
 } from '../../shared/types';
 
 import type { AnalysisResponse } from '../../shared/types';
-import { ANALYTICS_URL } from './config';
+import { ANALYTICS_URL, WORKER_URL } from './config';
 
 /** Cache TTL: 4 hours in milliseconds */
 const CACHE_TTL_MS = 4 * 60 * 60 * 1000;
@@ -77,7 +77,7 @@ interface AppState {
     clearResult: () => void;
 }
 
-const DEFAULT_WORKER_URL = import.meta.env.VITE_WORKER_URL || 'http://localhost:8787';
+const DEFAULT_WORKER_URL = WORKER_URL;
 
 export const useStore = create<AppState>((set, get) => ({
     view: 'setup',
@@ -184,7 +184,11 @@ export const useStore = create<AppState>((set, get) => ({
                     body: JSON.stringify({ ticker, result: data, user_id: 1 }),
                 }).catch(() => {});
         } catch (err) {
-            const msg = err instanceof Error ? err.message : 'Analysis failed';
+            let msg = err instanceof Error ? err.message : 'Analysis failed';
+            // fetch() rejects with a bare TypeError when the worker isn't reachable at all
+            if (err instanceof TypeError || /Failed to fetch|NetworkError|Load failed/i.test(msg)) {
+                msg = `Can't reach the report worker at ${workerUrl || DEFAULT_WORKER_URL} — start it with ./start-terminal.sh (or \`npx wrangler dev\` in worker/).`;
+            }
             set({ error: msg, analysisPhase: '' });
         } finally {
             set({ _inflightTicker: null, isAnalyzing: false });

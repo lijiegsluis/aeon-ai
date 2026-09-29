@@ -24,18 +24,39 @@ from pathlib import Path
 import real_data
 
 
+def _merge_by_year(hardcoded, live):
+    """Live dates win for every year they cover; hardcoded dates fill the rest."""
+    live_years = {d.year for d in live}
+    return sorted([d for d in hardcoded if d.year not in live_years] + list(live))
+
+
 def seed_calendar():
     """Seed calendar with major economic events"""
 
     db_path = Path(os.environ.get("AEON_INTEL_DB_PATH", str(Path.home() / ".aeon" / "intelligence.db")))
+    db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(db_path))
     c = conn.cursor()
 
-    # Clear existing events
-    c.execute('DELETE FROM events')
+    c.execute("""CREATE TABLE IF NOT EXISTS events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, description TEXT,
+        date TEXT NOT NULL, event_type TEXT, phase TEXT, affected_tickers TEXT,
+        recommendation TEXT, impact_score REAL, source TEXT DEFAULT 'calendar')""")
 
-    now = datetime.now()
+    # Only calendar-seeded rows are rebuilt; events added by hand (source='manual')
+    # survive every sync. Older databases predate the source column.
+    cols = {r[1] for r in c.execute("PRAGMA table_info(events)")}
+    if "source" not in cols:
+        c.execute("ALTER TABLE events ADD COLUMN source TEXT DEFAULT 'calendar'")
+    c.execute("DELETE FROM events WHERE COALESCE(source, 'calendar') != 'manual'")
+
+    now = datetime.now().replace(second=0, microsecond=0)
     events = []
+
+    # Official schedules fetched live keep the calendar current beyond the dates
+    # hardcoded below; any year the live fetch covers replaces the hardcoded list.
+    live_fomc = real_data.get_fomc_schedule()
+    live_bls = real_data.get_bls_schedule()
 
     # FOMC Meetings — real 2026 schedule (federalreserve.gov/monetarypolicy/fomccalendars.htm).
     # Decision announced on the second day of each two-day meeting, 2:00pm ET.
@@ -49,6 +70,7 @@ def seed_calendar():
         datetime(2026, 10, 28, 14, 0),
         datetime(2026, 12, 9, 14, 0),
     ]
+    fomc_dates = _merge_by_year(fomc_dates, [d for ds in live_fomc.values() for d in ds])
     for date in fomc_dates:
         events.append({
             'title': 'FOMC Meeting Decision',
@@ -66,11 +88,12 @@ def seed_calendar():
         datetime(2026, 7, 2), datetime(2026, 8, 7), datetime(2026, 9, 4),
         datetime(2026, 10, 2), datetime(2026, 11, 6), datetime(2026, 12, 4),
     ]
+    nfp_dates = _merge_by_year([d.replace(hour=8, minute=30) for d in nfp_dates], live_bls.get('nfp', []))
     for date in nfp_dates:
         events.append({
             'title': 'Non-Farm Payrolls (NFP)',
             'description': 'Monthly employment report - key labor market indicator',
-            'date': date.replace(hour=8, minute=30).isoformat(),
+            'date': date.isoformat(),
             'event_type': 'macro',
             'affected_tickers': 'SPY,QQQ,DXY,GLD',
             'impact_score': 9.0
@@ -83,11 +106,12 @@ def seed_calendar():
         datetime(2026, 7, 14), datetime(2026, 8, 12), datetime(2026, 9, 11),
         datetime(2026, 10, 14), datetime(2026, 11, 10), datetime(2026, 12, 10),
     ]
+    cpi_dates = _merge_by_year([d.replace(hour=8, minute=30) for d in cpi_dates], live_bls.get('cpi', []))
     for date in cpi_dates:
         events.append({
             'title': 'Consumer Price Index (CPI)',
             'description': 'Monthly inflation data - crucial for Fed policy',
-            'date': date.replace(hour=8, minute=30).isoformat(),
+            'date': date.isoformat(),
             'event_type': 'macro',
             'affected_tickers': 'SPY,QQQ,TLT,GLD,DXY',
             'impact_score': 9.0
@@ -101,11 +125,12 @@ def seed_calendar():
         datetime(2026, 9, 10), datetime(2026, 10, 15), datetime(2026, 11, 13),
         datetime(2026, 12, 15),
     ]
+    ppi_dates = _merge_by_year([d.replace(hour=8, minute=30) for d in ppi_dates], live_bls.get('ppi', []))
     for date in ppi_dates:
         events.append({
             'title': 'Producer Price Index (PPI)',
             'description': 'Wholesale inflation indicator',
-            'date': date.replace(hour=8, minute=30).isoformat(),
+            'date': date.isoformat(),
             'event_type': 'macro',
             'affected_tickers': 'SPY,QQQ,DXY',
             'impact_score': 7.0
@@ -254,8 +279,8 @@ def seed_calendar():
     # Insert all events
     for event in events:
         c.execute('''
-            INSERT INTO events (title, description, date, event_type, affected_tickers, impact_score)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO events (title, description, date, event_type, affected_tickers, impact_score, source)
+            VALUES (?, ?, ?, ?, ?, ?, 'calendar')
         ''', (
             event['title'],
             event['description'],

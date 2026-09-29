@@ -7,8 +7,10 @@
 import { useEffect, useState } from 'react';
 import { ErrorNote } from './Terminal';
 import { useStore } from '../store';
+import NativeDeepDive from './NativeDeepDive';
+import { DEEP_RESEARCH_URL } from '../config';
 
-const FRA = 'http://127.0.0.1:8600/api/v1';
+const FRA = `${DEEP_RESEARCH_URL}/api/v1`;
 
 const SUBS = [
     ['overview', '🎯 Overview'],
@@ -408,31 +410,61 @@ function InsidersSub({ ticker }: { ticker: string }) {
 
 export default function DeepResearch() {
     const { ticker } = useStore();
-    const [sub, setSub] = useState<Sub>('overview');
+    const [sub, setSub] = useState<Sub | 'native'>('overview');
+    const [engine, setEngine] = useState<'checking' | 'up' | 'down'>('checking');
+
+    // The 11-agent engine is optional (start-terminal.sh runs it). Its /health has no
+    // CORS headers, so probe opaquely: the promise resolves whenever the server answers.
+    useEffect(() => {
+        let cancelled = false;
+        fetch(`${DEEP_RESEARCH_URL}/health`, { mode: 'no-cors' })
+            .then(() => !cancelled && setEngine('up'))
+            .catch(() => !cancelled && setEngine('down'));
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
     return (
         <div className="animate-fade-in space-y-4">
             <div className="flex flex-wrap items-center gap-3">
                 <h2 className="section-heading">Deep Research · {ticker}</h2>
-                <span className="badge-accent text-[10px]">⚡ 11-agent hierarchical RAG</span>
+                {engine === 'up' && <span className="badge-accent text-[10px]">⚡ 11-agent hierarchical RAG</span>}
+                {engine === 'down' && <span className="badge-gold text-[10px]">Aeon native deep dive</span>}
             </div>
-            <div className="flex flex-wrap gap-1 border-b border-white/[0.06] pb-2">
-                {SUBS.map(([id, label]) => (
-                    <button
-                        key={id}
-                        onClick={() => setSub(id)}
-                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-                            sub === id ? 'bg-accent/10 text-accent' : 'text-white/40 hover:text-white/70'
-                        }`}
-                    >
-                        {label}
-                    </button>
-                ))}
-            </div>
-            {sub === 'overview' && <OverviewSub ticker={ticker} />}
-            {sub === 'peers' && <PeersSub ticker={ticker} />}
-            {sub === 'earnings' && <EarningsSub ticker={ticker} />}
-            {sub === 'performance' && <PerformanceSub ticker={ticker} />}
-            {sub === 'insiders' && <InsidersSub ticker={ticker} />}
+            {engine === 'checking' && <p className="text-sm text-white/40">Checking the research engine…</p>}
+            {engine === 'down' && (
+                <>
+                    <div className="card p-4 text-sm text-white/60">
+                        The 11-agent research engine isn&apos;t running on this machine (start it with <code>./start-terminal.sh</code>).
+                        Below is Aeon&apos;s own deep dive for {ticker} — performance, risk, technicals, street view, earnings and insiders.
+                    </div>
+                    <NativeDeepDive ticker={ticker} />
+                </>
+            )}
+            {engine === 'up' && (
+                <>
+                    <div className="flex flex-wrap gap-1 border-b border-white/[0.06] pb-2">
+                        {[...SUBS, ['native', '🧭 Aeon native'] as const].map(([id, label]) => (
+                            <button
+                                key={id}
+                                onClick={() => setSub(id)}
+                                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                                    sub === id ? 'bg-accent/10 text-accent' : 'text-white/40 hover:text-white/70'
+                                }`}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                    {sub === 'overview' && <OverviewSub ticker={ticker} />}
+                    {sub === 'peers' && <PeersSub ticker={ticker} />}
+                    {sub === 'earnings' && <EarningsSub ticker={ticker} />}
+                    {sub === 'performance' && <PerformanceSub ticker={ticker} />}
+                    {sub === 'insiders' && <InsidersSub ticker={ticker} />}
+                    {sub === 'native' && <NativeDeepDive ticker={ticker} />}
+                </>
+            )}
         </div>
     );
 }

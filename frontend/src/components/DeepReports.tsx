@@ -7,8 +7,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { ErrorNote, ProgressBar, useVaultKey, VaultKeyStatus } from './Terminal';
 import { useStore } from '../store';
+import { ANALYTICS_URL, FINROBOT_URL } from '../config';
+import { jget } from '../utils/api';
 
-const FINROBOT = 'http://127.0.0.1:8002';
+const FINROBOT = FINROBOT_URL;
 
 type TaskResult = { ticker: string; html: string[]; pdf: string[] };
 type TaskState = { status: string; logs: string[]; result: TaskResult | null };
@@ -37,6 +39,27 @@ export default function DeepReports() {
     const [elapsed, setElapsed] = useState(0);
     const logRef = useRef<HTMLDivElement>(null);
     const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+    const [engine, setEngine] = useState<'checking' | 'up' | 'down'>('checking');
+    const setActiveTab = useStore((s) => s.setActiveTab);
+    const setView = useStore((s) => s.setView);
+
+    // Optional engine: probe it opaquely (no CORS on its root) before offering the form.
+    useEffect(() => {
+        let cancelled = false;
+        fetch(FINROBOT, { mode: 'no-cors' })
+            .then(() => !cancelled && setEngine('up'))
+            .catch(() => !cancelled && setEngine('down'));
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    // Pre-fill the company name for the terminal ticker.
+    useEffect(() => {
+        jget<{ name?: string }>(`${ANALYTICS_URL}/market/quote/${ticker}`)
+            .then((q) => q.name && setCompany(q.name))
+            .catch(() => {});
+    }, [ticker]);
 
     useEffect(
         () => () => {
@@ -123,6 +146,22 @@ export default function DeepReports() {
                     <h2 className="section-heading">Deep Reports · {ticker}</h2>
                     <span className="badge-accent text-[10px]">⚡ Multi-agent equity research</span>
                 </div>
+                {engine === 'down' && (
+                    <div className="mb-4 rounded-lg border border-white/10 p-4 text-sm text-white/60">
+                        The multi-agent report engine isn&apos;t running on this machine (<code>./start-terminal.sh</code> starts it).
+                        Aeon&apos;s own 55-dimension report for {ticker} is ready in the Research tab.
+                        <button
+                            className="btn-primary ml-3"
+                            style={{ fontSize: 11 }}
+                            onClick={() => {
+                                setActiveTab('research');
+                                setView('analysis');
+                            }}
+                        >
+                            Open Research →
+                        </button>
+                    </div>
+                )}
                 <div className="flex flex-wrap items-end gap-2">
                     <div>
                         <label className="stat-label mb-1 block">Company name</label>

@@ -24,10 +24,17 @@ BROWSER_UA = (
     "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 )
 
-# SEC requires a descriptive User-Agent with contact info for fair-use access.
-SEC_UA = "AeonIntelligence research contact@aeonnimbus.example"
+# SEC requires a descriptive User-Agent with a real contact address for fair-use
+# access (sec.gov/os/accessing-edgar-data). Set SEC_CONTACT_EMAIL in production.
+SEC_UA = f"AeonIntelligence research {os.environ.get('SEC_CONTACT_EMAIL', 'contact@aeonnimbus.com')}"
 
 _SESSION = requests.Session()
+
+try:  # browser TLS fingerprint for hosts that 403/429 plain HTTP clients from cloud IPs
+    from curl_cffi import requests as _browser
+except ImportError:  # pragma: no cover
+    _browser = None
+_BROWSER_HOSTS = ("finance.yahoo.com", "bls.gov", "coingecko.com")
 
 # Real, accumulated-since-process-start per-source call outcomes - never
 # randomized or backfilled. Powers /api/sources/status. Keyed by the caller's
@@ -71,7 +78,12 @@ def get_source_status() -> Dict[str, Dict[str, Any]]:
 def _get(url: str, headers: Optional[Dict[str, str]] = None, params: Optional[Dict[str, Any]] = None,
           timeout: float = 8.0, source_name: Optional[str] = None) -> Optional[requests.Response]:
     try:
-        resp = _SESSION.get(url, headers=headers, params=params, timeout=timeout)
+        if _browser is not None and any(h in url for h in _BROWSER_HOSTS):
+            # let curl_cffi send a real browser's headers; only keep non-UA extras
+            extra = {k: v for k, v in (headers or {}).items() if k.lower() != "user-agent"}
+            resp = _browser.get(url, headers=extra or None, params=params, timeout=timeout, impersonate="chrome")
+        else:
+            resp = _SESSION.get(url, headers=headers, params=params, timeout=timeout)
         if resp.status_code == 200:
             if source_name:
                 _record_status(source_name, True, resp.status_code)
@@ -383,7 +395,9 @@ def _classify_sentiment(text: str) -> str:
 def _extract_tickers(text: str, watchlist: List[str]) -> str:
     upper = text.upper()
     found = [t for t in watchlist if re.search(rf"\b{re.escape(t)}\b", upper)]
-    return ",".join(found) if found else "SPY"
+    # No match means the story isn't about a tracked ticker - don't pin it on SPY,
+    # or every untagged headline turns into an SPY "signal".
+    return ",".join(found)
 
 
 WATCHLIST = ["NVDA", "AAPL", "MSFT", "GOOGL", "META", "TSLA", "AMD", "AMZN", "ORCL", "COIN", "SQ", "SHOP",
@@ -448,6 +462,39 @@ def get_real_news(limit: int = 30) -> List[Dict[str, Any]]:
 _COINS = [("bitcoin", "BTC", "Bitcoin"), ("ethereum", "ETH", "Ethereum"), ("solana", "SOL", "Solana")]
 
 
+_KRAKEN_PAIRS = {"BTC": "XBTUSD", "ETH": "ETHUSD", "SOL": "SOLUSD"}
+# Kraken answers some pairs under their legacy names
+_KRAKEN_KEYS = {"BTC": ("XBTUSD", "XXBTZUSD"), "ETH": ("ETHUSD", "XETHZUSD"), "SOL": ("SOLUSD",)}
+
+
+def _kraken_prices() -> Optional[List[Dict[str, Any]]]:
+    """Keyless fallback when CoinGecko refuses the host (it 403s many cloud IPs).
+    Kraken's public ticker gives last trade and today's open (UTC), so the change
+    is since the UTC day open rather than a rolling 24h; no market cap."""
+    resp = _get("https://api.kraken.com/0/public/Ticker", params={"pair": ",".join(_KRAKEN_PAIRS.values())},
+                source_name="Kraken (crypto fallback)")
+    if not resp:
+        return None
+    try:
+        result = resp.json().get("result") or {}
+        out = []
+        for idx, (_, symbol, name) in enumerate(_COINS):
+            d = next((result[k] for k in _KRAKEN_KEYS[symbol] if k in result), None)
+            if not d:
+                continue
+            last, opened = float(d["c"][0]), float(d["o"])
+            out.append({
+                "id": idx + 1, "symbol": symbol, "name": name, "price": last,
+                "change_24h": round((last / opened - 1) * 100, 2) if opened else None,
+                "market_cap": None, "volume_24h": float(d["v"][1]) * last,
+                "source": "Kraken", "timestamp": datetime.now().isoformat(),
+            })
+        return out or None
+    except Exception as e:
+        print(f"[real_data] kraken parse error: {e}")
+        return None
+
+
 def get_crypto_prices() -> Optional[List[Dict[str, Any]]]:
     ids = ",".join(c[0] for c in _COINS)
     resp = _get(
@@ -457,7 +504,7 @@ def get_crypto_prices() -> Optional[List[Dict[str, Any]]]:
         source_name="CoinGecko",
     )
     if not resp:
-        return None
+        return _kraken_prices()
     try:
         data = resp.json()
         out = []
@@ -572,6 +619,12 @@ def _parse_form4_xml(xml_text: str) -> Optional[Dict[str, Any]]:
     latest_date = ""
 
     for txn in root.findall(".//nonDerivativeTransaction"):
+        # Only open-market trades carry a conviction signal: P = purchase, S = sale.
+        # Grants (A), option exercises (M), tax withholding (F), gifts (G) etc. also
+        # move shares in or out but say nothing about what the insider thinks.
+        code = _text("transactionCoding/transactionCode", txn)
+        if code not in ("P", "S"):
+            continue
         shares_txt = _text("transactionAmounts/transactionShares/value", txn)
         price_txt = _text("transactionAmounts/transactionPricePerShare/value", txn)
         acq_disp = _text("transactionAmounts/transactionAcquiredDisposedCode/value", txn)
@@ -584,10 +637,10 @@ def _parse_form4_xml(xml_text: str) -> Optional[Dict[str, Any]]:
         except ValueError:
             continue
         value = shares * price
-        if acq_disp == "A":
+        if code == "P" and acq_disp != "D":
             bought_shares += int(shares)
             bought_value += value
-        elif acq_disp == "D":
+        elif code == "S" and acq_disp != "A":
             sold_shares += int(shares)
             sold_value += value
 
@@ -647,3 +700,96 @@ def get_recent_form4_trades(max_filings: int = 25) -> List[Dict[str, Any]]:
         time.sleep(0.15)
 
     return trades
+
+
+# ---------------------------------------------------------------------------
+# Official release schedules (keeps the calendar current past the hardcoded year)
+# ---------------------------------------------------------------------------
+
+_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August",
+           "September", "October", "November", "December"]
+_MONTH_RE = "|".join(_MONTHS)
+
+
+def parse_fomc_calendar(html: str) -> Dict[int, List[datetime]]:
+    """Decision days (the last day of each meeting) per year from the Fed's
+    fomccalendars.htm. Works on the page's visible text, so markup changes don't
+    break it: each year's block starts at "<year> FOMC Meetings" and lists meetings
+    as "January 27-28", "April/May 30-1" or "March 18*" (asterisk = SEP meeting)."""
+    text = re.sub(r"<[^>]+>", " ", html)
+    text = re.sub(r"&nbsp;|\s+", " ", text)
+    blocks = list(re.finditer(r"(20\d\d) FOMC Meetings", text))
+    out: Dict[int, List[datetime]] = {}
+    for i, m in enumerate(blocks):
+        year = int(m.group(1))
+        body = text[m.end(): blocks[i + 1].start() if i + 1 < len(blocks) else len(text)]
+        dates = []
+        # Scheduled meetings are always two-day ranges ("January 27-28"); single dates
+        # elsewhere on the page are notation votes, minutes releases and the like.
+        pat = rf"\b({_MONTH_RE})(?:\s*/\s*({_MONTH_RE}))?\s+(\d{{1,2}})\s*[-\u2013]\s*(\d{{1,2}})\*?"
+        for mm in re.finditer(pat, body):
+            start_day = int(mm.group(3))
+            day = int(mm.group(4))
+            # "April/May 28-29" is all April; only a wrapped range ("October/November 31-1")
+            # ends in the second month.
+            month = mm.group(2) if mm.group(2) and day < start_day else mm.group(1)
+            try:
+                dates.append(datetime(year, _MONTHS.index(month) + 1, day, 14, 0))
+            except ValueError:
+                continue
+        dates = sorted(set(dates))
+        # A meeting is listed once per year; drop repeats within a week (e.g. a
+        # rescheduled meeting shown next to its original date).
+        dates = [d for i, d in enumerate(dates) if i == 0 or (d - dates[i - 1]).days > 7]
+        if 4 <= len(dates) <= 12:  # anything else means the parse went wrong
+            out[year] = dates
+    return out
+
+
+def get_fomc_schedule() -> Dict[int, List[datetime]]:
+    resp = _get("https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+                headers={"User-Agent": BROWSER_UA}, timeout=15, source_name="Federal Reserve FOMC calendar")
+    if resp is None:
+        return {}
+    try:
+        return parse_fomc_calendar(resp.text)
+    except Exception as e:
+        print(f"[real_data] FOMC calendar parse failed: {e}")
+        return {}
+
+
+_BLS_RELEASES = {
+    "Employment Situation": "nfp",
+    "Consumer Price Index": "cpi",
+    "Producer Price Index": "ppi",
+}
+
+
+def parse_bls_ics(ics: str) -> Dict[str, List[datetime]]:
+    """Release datetimes (ET) for NFP / CPI / PPI from BLS's news-release iCalendar."""
+    ics = re.sub(r"\r?\n[ \t]", "", ics)  # unfold continued lines
+    out: Dict[str, List[datetime]] = {k: [] for k in _BLS_RELEASES.values()}
+    for block in ics.split("BEGIN:VEVENT")[1:]:
+        summary = re.search(r"^SUMMARY[^:]*:(.*)$", block, re.M)
+        start = re.search(r"^DTSTART[^:]*:(\d{8})(?:T(\d{4}))?", block, re.M)
+        if not summary or not start:
+            continue
+        title = summary.group(1).strip()
+        for name, key in _BLS_RELEASES.items():
+            if title.startswith(name):
+                d, t = start.group(1), start.group(2) or "0830"
+                out[key].append(datetime(int(d[:4]), int(d[4:6]), int(d[6:8]), int(t[:2]), int(t[2:])))
+    return {k: sorted(set(v)) for k, v in out.items() if v}
+
+
+def get_bls_schedule() -> Dict[str, List[datetime]]:
+    resp = _get("https://www.bls.gov/schedule/news_release/bls.ics",
+                headers={"User-Agent": BROWSER_UA, "Accept": "text/calendar,*/*"},
+                timeout=15, source_name="BLS release calendar")
+    if resp is None:
+        return {}
+    try:
+        return parse_bls_ics(resp.text)
+    except Exception as e:
+        print(f"[real_data] BLS calendar parse failed: {e}")
+        return {}

@@ -32,6 +32,7 @@ from database import (
 
 from sentiment_analyzer import analyze_market_event, SentimentAnalyzer
 from api_extensions import register_api_extensions
+import market_data as md
 
 app = FastAPI(title="Aeon Nimbus Analytics")
 _DEFAULT_ORIGINS = [
@@ -80,6 +81,9 @@ def _seed_market_events():
 # Register API extensions
 register_api_extensions(app, lambda ticker: quote(ticker))
 
+from research import router as research_router  # noqa: E402
+app.include_router(research_router)
+
 TICKER_RE = re.compile(r"^[A-Z0-9.\-]{1,10}$")
 
 
@@ -101,24 +105,16 @@ def f(x, nd=2):
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "aeonnimbus-analytics"}
+    # last_source shows which upstream answered most recently (yfinance, or a
+    # fallback when Yahoo blocks the host) — handy when a deploy looks "stale".
+    return {"status": "ok", "service": "aeonnimbus-analytics", "last_source": md.LAST_SOURCE}
 
 
 # ─── Lightweight cache for upstream (yfinance) calls ────────────────
 # yfinance has no built-in caching, so identical requests within the TTL
 # (e.g. Markowitz's joint download, or repeated quote hits from Overview +
 # Markets + Fusion in the same few seconds) were each hitting Yahoo fresh.
-_CACHE: dict[str, tuple[float, object]] = {}
-
-
-def cached(key: str, ttl: float, fn):
-    now = time.time()
-    hit = _CACHE.get(key)
-    if hit and now - hit[0] < ttl:
-        return hit[1]
-    val = fn()
-    _CACHE[key] = (now, val)
-    return val
+cached = md.cached
 
 
 _RF_CACHE_KEY = "risk_free_rate"
@@ -129,9 +125,11 @@ def risk_free_rate() -> float:
     back to a fixed 4% if the quote is unavailable."""
     def fetch():
         try:
-            hist = yf.Ticker("^TNX").history(period="5d")
+            hist = md.history("^TNX", "5d")
             if len(hist):
-                return float(hist.Close.iloc[-1]) / 100
+                v = float(hist.Close.iloc[-1])
+                # ^TNX has been quoted both as the yield (4.2) and as 10x it (42).
+                return (v / 10 if v > 20 else v) / 100
         except Exception:
             pass
         return 0.04
@@ -170,9 +168,29 @@ def capm_wacc(t, i: dict) -> tuple[float, str]:
 @app.get("/market/quote/{ticker}")
 def quote(ticker: str):
     tk = check(ticker)
-    i = cached(f"info:{tk}", 60, lambda: yf.Ticker(tk).info)
+    i = md.info(tk)
     if not i or i.get("regularMarketPrice") is None and i.get("currentPrice") is None:
         raise HTTPException(404, "no data for ticker")
+    # yfinance's dividendYield switched from a fraction to a percent in 2025;
+    # trailingAnnualDividendYield is still a fraction, which is what callers expect.
+    div_yield = i.get("trailingAnnualDividendYield")
+    if div_yield is None and i.get("dividendYield") is not None:
+        dy = i["dividendYield"]
+        div_yield = dy / 100 if dy > 0.3 else dy
+    # Moving averages (and a 52-week range when .info lacks one) from price history,
+    # so the Overview and Markets tabs don't depend on OpenBB for them.
+    ma50 = ma200 = None
+    high52, low52 = i.get("fiftyTwoWeekHigh"), i.get("fiftyTwoWeekLow")
+    try:
+        closes = md.history(tk, "1y")["Close"]
+        if len(closes) >= 50:
+            ma50 = closes.iloc[-50:].mean()
+        if len(closes) >= 200:
+            ma200 = closes.iloc[-200:].mean()
+        if len(closes) >= 20 and (high52 is None or low52 is None):
+            high52, low52 = closes.max(), closes.min()
+    except Exception:
+        pass
     return {
         "ticker": tk,
         "name": i.get("shortName") or i.get("longName"),
@@ -184,12 +202,15 @@ def quote(ticker: str):
         "forwardPe": f(i.get("forwardPE")),
         "eps": f(i.get("trailingEps")),
         "beta": f(i.get("beta")),
-        "dividendYield": f(i.get("dividendYield"), 4),
-        "high52": f(i.get("fiftyTwoWeekHigh")),
-        "low52": f(i.get("fiftyTwoWeekLow")),
-        "volume": i.get("volume"),
+        "dividendYield": f(div_yield, 4),
+        "high52": f(high52),
+        "low52": f(low52),
+        "ma50": f(ma50),
+        "ma200": f(ma200),
+        "volume": i.get("volume") or i.get("regularMarketVolume"),
         "sector": i.get("sector"),
         "industry": i.get("industry"),
+        "source": i.get("_source", "yfinance"),
     }
 
 
@@ -200,8 +221,7 @@ def history(ticker: str, period: str = "1y", interval: str = "1d"):
     if interval not in {"1d", "1wk", "1mo"}:
         raise HTTPException(400, "invalid interval")
     tk = check(ticker)
-    df = cached(f"hist:{tk}:{period}:{interval}", 60,
-                lambda: yf.Ticker(tk).history(period=period, interval=interval))
+    df = md.history(tk, period, interval)
     if df.empty:
         raise HTTPException(404, "no history")
     return {
@@ -211,7 +231,7 @@ def history(ticker: str, period: str = "1y", interval: str = "1d"):
                 "date": d.strftime("%Y-%m-%d"),
                 "open": f(r.Open), "high": f(r.High),
                 "low": f(r.Low), "close": f(r.Close),
-                "volume": int(r.Volume),
+                "volume": int(r.Volume) if r.Volume == r.Volume else None,
             }
             for d, r in df.iterrows()
         ],
@@ -235,7 +255,7 @@ def screener(tickers: str = "AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,JPM,V,JNJ"):
 def montecarlo(ticker: str, days: int = 252, sims: int = 10000):
     days, sims = min(days, 504), min(sims, 20000)
     tk = check(ticker)
-    df = cached(f"hist:{tk}:2y:1d", 60, lambda: yf.Ticker(tk).history(period="2y"))
+    df = md.history(tk, "2y")
     if len(df) < 60:
         raise HTTPException(404, "not enough history")
     rets = np.log(df.Close / df.Close.shift(1)).dropna()
@@ -249,7 +269,7 @@ def montecarlo(ticker: str, days: int = 252, sims: int = 10000):
     step = max(1, days // 60)
     sample_paths = paths[:: sims // 20, ::step].round(2).tolist()
     return {
-        "ticker": check(ticker), "spot": f(s0), "days": days, "sims": sims,
+        "ticker": tk, "spot": f(s0), "days": days, "sims": sims,
         "annualVol": f(sigma * math.sqrt(252) * 100),
         "expected": f(finals.mean()),
         "percentiles": {"p5": pct(5), "p25": pct(25), "p50": pct(50), "p75": pct(75), "p95": pct(95)},
@@ -260,18 +280,26 @@ def montecarlo(ticker: str, days: int = 252, sims: int = 10000):
 
 @app.get("/quant/dcf/{ticker}")
 def dcf(ticker: str):
-    t = yf.Ticker(check(ticker))
-    i = t.info
-    try:
-        fcf = float(t.cashflow.loc["Free Cash Flow"].iloc[0])
-    except Exception:
-        fcf = (i.get("freeCashflow") or 0) * 1.0
+    tk = check(ticker)
+    i = md.info(tk)
+    if not md.has_fundamentals(i):
+        raise HTTPException(503, "Fundamentals provider unavailable — DCF needs cash-flow data; retry shortly")
+    def last_fcf():
+        try:
+            return float(yf.Ticker(tk).cashflow.loc["Free Cash Flow"].iloc[0])
+        except Exception:
+            return float(i.get("freeCashflow") or 0)
+    fcf = cached(f"fcf:{tk}", 3600, last_fcf)
     shares = i.get("sharesOutstanding")
     price = i.get("currentPrice") or i.get("regularMarketPrice")
     if not fcf or not shares or not price:
         raise HTTPException(404, "missing fundamentals for DCF")
+    if fcf < 0:
+        # Discounting negative cash flows gives a negative "fair value" — not a
+        # valuation, just noise that would drag the Fusion ensemble median.
+        raise HTTPException(422, f"Free cash flow is negative (${fcf/1e6:,.0f}M) — a cash-flow DCF isn't meaningful for {tk}")
 
-    wacc, methodology = capm_wacc(t, i)
+    wacc, methodology = capm_wacc(tk, i)
     tg = min(0.025, wacc - 0.01)  # terminal growth must stay below the discount rate
 
     g_base = i.get("earningsGrowth")
@@ -285,7 +313,14 @@ def dcf(ticker: str):
 
     scenarios = {}
     for name, g in growth_map.items():
-        flows = [fcf * (1 + g) ** yr for yr in range(1, 11)]
+        # Two-stage: the scenario growth rate for years 1-5, then a straight-line
+        # fade to terminal growth by year 10 — compounding even 25% for a full
+        # decade produced fair values several times the price for mega-caps.
+        flows, cf = [], fcf
+        for yr in range(1, 11):
+            rate = g if yr <= 5 else g + (tg - g) * (yr - 5) / 5
+            cf *= 1 + rate
+            flows.append(cf)
         pv = sum(c / (1 + wacc) ** yr for yr, c in enumerate(flows, 1))
         terminal = flows[-1] * (1 + tg) / (wacc - tg) / (1 + wacc) ** 10
         fair = (pv + terminal) / shares
@@ -294,7 +329,7 @@ def dcf(ticker: str):
             "upside": f(100 * (fair / price - 1)),
         }
     return {
-        "ticker": check(ticker), "price": f(price), "fcf": fcf,
+        "ticker": tk, "price": f(price), "fcf": fcf,
         "wacc": f(wacc, 4), "terminalGrowth": f(tg, 4), "scenarios": scenarios,
         "methodology": methodology,
     }
@@ -305,13 +340,13 @@ def markowitz(tickers: str = "AAPL,MSFT,GOOGL,AMZN"):
     syms = [check(s.strip()) for s in tickers.split(",")[:10]]
     if len(syms) < 2:
         raise HTTPException(400, "need at least 2 tickers")
-    px = cached(f"joint:{','.join(sorted(syms))}:2y", 120,
-                lambda: yf.download(syms, period="2y", progress=False)["Close"].dropna())
+    px = md.joint_closes(syms, "2y")
     if len(px) < 60:
         raise HTTPException(404, "not enough joint history")
     rets = np.log(px / px.shift(1)).dropna()
     mu, cov = rets.mean() * 252, rets.cov() * 252
     rng = np.random.default_rng(7)
+    rf = risk_free_rate()
     n = len(syms)
     best = {"sharpe": -9e9}
     frontier = []
@@ -320,7 +355,7 @@ def markowitz(tickers: str = "AAPL,MSFT,GOOGL,AMZN"):
         w /= w.sum()
         r = float(w @ mu)
         v = float(np.sqrt(w @ cov @ w))
-        sh = (r - 0.04) / v if v > 0 else 0
+        sh = (r - rf) / v if v > 0 else 0
         frontier.append({"ret": f(r * 100), "vol": f(v * 100)})
         if sh > best["sharpe"]:
             best = {"sharpe": sh, "weights": w, "ret": r, "vol": v}
@@ -331,6 +366,7 @@ def markowitz(tickers: str = "AAPL,MSFT,GOOGL,AMZN"):
             "expectedReturn": f(best["ret"] * 100),
             "volatility": f(best["vol"] * 100),
             "sharpe": f(best["sharpe"]),
+            "riskFree": f(rf * 100),
         },
         "frontier": frontier[::40],
     }
@@ -374,7 +410,7 @@ def gemini(key: str, prompt: str) -> str:
 
 def snapshot(ticker: str) -> dict:
     q = quote(ticker)
-    df = yf.Ticker(ticker).history(period="6mo")
+    df = md.history(check(ticker), "6mo")
     q["return6mo"] = f(100 * (df.Close.iloc[-1] / df.Close.iloc[0] - 1)) if len(df) > 10 else None
     return q
 
@@ -461,7 +497,7 @@ def persona_metrics(tk: str, i: dict) -> dict:
         out["munger"] = {"marginRetention": f(100 * op_margin / gross_margin)}
 
     try:
-        df = cached(f"hist:{tk}:2y:1d", 60, lambda: yf.Ticker(tk).history(period="2y"))
+        df = md.history(tk, "2y")
         if len(df) > 20 and price:
             out["marks"] = {"cyclePercentile": f(100 * float((df.Close < price).mean()))}
     except Exception:
@@ -490,7 +526,7 @@ def personas(req: PersonaReq):
     t = check(req.ticker)
     snap = snapshot(t)
     chosen = [p for p in req.personas if p in PERSONAS][:5] or ["buffett"]
-    i = cached(f"info:{t}", 60, lambda: yf.Ticker(t).info)
+    i = md.info(t)
     metrics = persona_metrics(t, i)
     if not req.geminiKey:
         return _mock_personas(t, snap, chosen, metrics)
@@ -666,8 +702,7 @@ def fusion_valuation(ticker: str):
     """Valuation ensemble: five independent philosophies vote on fair value.
     Consensus = median; disagreement index = spread / consensus."""
     t = check(ticker)
-    tk = yf.Ticker(t)
-    i = tk.info
+    i = md.info(t)
     price = i.get("currentPrice") or i.get("regularMarketPrice")
     if not price:
         raise HTTPException(404, "no price")
@@ -678,8 +713,10 @@ def fusion_valuation(ticker: str):
     models = {}
     # 1. FCF DCF (Aeon base scenario) — FinRobot/FRA/Fincept all ship one
     try:
-        models["dcf"] = {"value": dcf(t)["scenarios"]["base"]["fairValue"],
-                         "philosophy": "10Y discounted free cash flow (base 7% growth)"}
+        d = dcf(t)
+        models["dcf"] = {"value": d["scenarios"]["base"]["fairValue"],
+                         "philosophy": f"10Y discounted free cash flow, {d['scenarios']['base']['growth']*100:.1f}% growth "
+                                       f"fading to terminal after year 5, WACC {d['wacc']*100:.1f}%"}
     except HTTPException:
         pass
     # 2. Graham number — Research worker's philosophy
@@ -737,9 +774,23 @@ def stooq_quote(ticker: str) -> float | None:
         return None
 
 
+def nasdaq_quote(ticker: str) -> float | None:
+    """Last sale from Nasdaq's public quote API — an upstream independent of Yahoo
+    (Stooq, the original cross-check, now serves a CAPTCHA to most clients)."""
+    try:
+        r = md._get(f"https://api.nasdaq.com/api/quote/{ticker.upper()}/info",
+                    params={"assetclass": "stocks"}, timeout=10)
+        data = (r.json() or {}).get("data") or {}
+        raw = ((data.get("primaryData") or {}).get("lastSalePrice") or "").replace("$", "").replace(",", "")
+        price = float(raw) if raw else None
+        return price if price and price > 0 else None
+    except Exception:
+        return None
+
+
 @app.get("/fusion/quote/{ticker}")
 def fusion_quote(ticker: str):
-    """Cross-source integrity check. yfinance-direct and Stooq are two
+    """Cross-source integrity check. Yahoo and Nasdaq (Stooq as a backup) are
     genuinely independent upstreams (separate companies, separate data
     pipelines) — that's the actual verification. OpenBB is surfaced as a
     third opinion when reachable, but excluded from the independence check
@@ -749,14 +800,21 @@ def fusion_quote(ticker: str):
     t = check(ticker)
     sources = {}
     independent = []
-    p1 = yf.Ticker(t).info.get("currentPrice")
+    i = md.info(t)
+    p1 = i.get("currentPrice") or i.get("regularMarketPrice")
     if p1:
-        sources["yfinance-direct"] = f(p1)
-        independent.append("yfinance-direct")
-    p2 = stooq_quote(t)
+        yahoo = "yahoo-chart" if i.get("_source") == "yahoo-chart" else "yfinance-direct"
+        sources[yahoo] = f(p1)
+        independent.append(yahoo)
+    p2 = nasdaq_quote(t)
     if p2:
-        sources["stooq"] = f(p2)
-        independent.append("stooq")
+        sources["nasdaq"] = f(p2)
+        independent.append("nasdaq")
+    else:
+        p2 = stooq_quote(t)
+        if p2:
+            sources["stooq"] = f(p2)
+            independent.append("stooq")
     try:
         r = http.get("http://127.0.0.1:6900/api/v1/equity/price/quote",
                      params={"provider": "yfinance", "symbol": t}, timeout=10)
@@ -770,14 +828,14 @@ def fusion_quote(ticker: str):
     if len(indep_vals) < 2:
         return {"ticker": t, "sources": sources, "verified": None,
                 "note": "fewer than two independent sources reachable — cannot cross-check",
-                "methodology": "yfinance-direct and Stooq are the two independent upstreams checked; "
+                "methodology": "Yahoo (yfinance or its chart API) and Nasdaq (Stooq as a backup) are the independent upstreams checked; "
                                 "OpenBB is informational only when it's backed by the yfinance provider."}
     spread_bps = f(10000 * abs(indep_vals[0] - indep_vals[1]) / indep_vals[0], 1)
     return {"ticker": t, "sources": sources, "spreadBps": spread_bps,
             "verified": spread_bps < 50,
-            "note": ("independent sources (yfinance, Stooq) agree" if spread_bps < 50
+            "note": (f"independent sources ({' vs '.join(independent)}) agree" if spread_bps < 50
                      else "independent sources disagree — data may be stale on one side"),
-            "methodology": "yfinance-direct and Stooq are the two independent upstreams checked; "
+            "methodology": "Yahoo (yfinance or its chart API) and Nasdaq (Stooq as a backup) are the independent upstreams checked; "
                             "OpenBB is informational only when it's backed by the yfinance provider."}
 
 
@@ -911,7 +969,11 @@ def council(req: CouncilReq):
     if not req.geminiKey:
         raise HTTPException(400, "council needs a Gemini key — all seats are real LLM runs")
     job_id = __import__("uuid").uuid4().hex[:12]
-    COUNCIL_JOBS[job_id] = {"status": "running", "phase": "seats deliberating"}
+    # Keep memory bounded: drop the oldest finished jobs beyond the last 50.
+    finished = [k for k, v in COUNCIL_JOBS.items() if v.get("status") != "running"]
+    for k in finished[:-50]:
+        COUNCIL_JOBS.pop(k, None)
+    COUNCIL_JOBS[job_id] = {"status": "running", "phase": "seats deliberating", "ticker": check(req.ticker)}
     threading.Thread(target=_council, args=(job_id, req), daemon=True).start()
     return {"jobId": job_id}
 
@@ -936,13 +998,73 @@ PLATFORM_DB  = os.path.expanduser(
 )
 
 
+def _native_brief(day: str) -> str:
+    """Morning brief built from what this service already knows — used wherever
+    the research-workstation houston.py isn't installed (e.g. a cloud deploy)."""
+    from datetime import date, timedelta
+    lines = [f"# Aeon Morning Brief — {day}", "",
+             "_Built by Aeon Analysis from your events, alerts, watchlists and thesis gates._", ""]
+
+    today = date.today()
+    with get_db() as conn:
+        events = conn.execute(
+            "SELECT title, event_date, affected_assets FROM market_events "
+            "WHERE date(event_date) BETWEEN date(?) AND date(?) ORDER BY event_date ASC",
+            (today.isoformat(), (today + timedelta(days=7)).isoformat())).fetchall()
+        alerts = conn.execute("SELECT ticker, condition_type, threshold FROM alerts WHERE is_active = 1").fetchall()
+        wl = conn.execute("SELECT name, tickers_json FROM watchlists ORDER BY updated_at DESC LIMIT 3").fetchall()
+
+    lines.append("## Next 7 days")
+    if events:
+        for e in events:
+            d = (date.fromisoformat(e["event_date"][:10]) - today).days
+            assets = ", ".join(json.loads(e["affected_assets"] or "[]"))
+            lines.append(f"- **D-{d}** · {e['event_date'][:10]} — {e['title']}" + (f" ({assets})" if assets else ""))
+    else:
+        lines.append("- No scheduled events in the next week.")
+    lines.append("")
+
+    tickers = []
+    for w in wl:
+        tickers += [t for t in json.loads(w["tickers_json"]) if t not in tickers]
+    if tickers:
+        lines.append("## Watchlist")
+        for tk in tickers[:12]:
+            try:
+                q = quote(tk)
+                chg = q.get("changePercent")
+                lines.append(f"- **{tk}** ${q['price']}" + (f" ({chg:+.2f}%)" if chg is not None else ""))
+            except Exception:
+                lines.append(f"- **{tk}** — quote unavailable")
+        lines.append("")
+
+    if alerts:
+        lines.append("## Active alerts")
+        labels = {"price_above": "price above", "price_below": "price below", "pe_above": "P/E above", "pe_below": "P/E below"}
+        for a in alerts:
+            lines.append(f"- {a['ticker']}: {labels.get(a['condition_type'], a['condition_type'])} {a['threshold']}")
+        lines.append("")
+
+    gates = houston_gates()["gates"]
+    lines.append("## Thesis gates")
+    if gates:
+        for g in gates[-8:]:
+            parts = [f"entry {g['entry']}" if g.get("entry") else "", f"target {g['target']}" if g.get("target") else "",
+                     f"stop {g['stop']}" if g.get("stop") else ""]
+            lines.append(f"- **{g['ticker']}** " + " · ".join(p for p in parts if p))
+    else:
+        lines.append("- No thesis gates yet — write one before sizing a position.")
+    return "\n".join(lines) + "\n"
+
+
 @app.post("/houston/run")
 def houston_run():
-    """Run houston.py and return the saved brief as text."""
+    """Run houston.py and return the saved brief as text. Without the research
+    workstation's houston.py, build the native brief instead of failing."""
     import subprocess, datetime
-    if not (os.path.exists(HOUSTON_PY) and os.path.exists(HOUSTON_VENV)):
-        raise HTTPException(503, "Houston runner is only available on the research workstation")
     day = datetime.date.today().isoformat()
+    if not (os.path.exists(HOUSTON_PY) and os.path.exists(HOUSTON_VENV)):
+        return {"ok": True, "day": day, "brief": _native_brief(day), "native": True}
     result = subprocess.run(
         [HOUSTON_VENV, HOUSTON_PY],
         capture_output=True, text=True, timeout=60,
@@ -1006,11 +1128,12 @@ class GateIn(BaseModel):
 def houston_save_gate(g: GateIn):
     """Write a new thesis gate file."""
     import datetime
+    tk = check(g.ticker)  # also keeps the filename inside GATES_DIR
     os.makedirs(GATES_DIR, exist_ok=True)
     day = datetime.date.today().isoformat()
-    fname = f"{g.ticker.upper()}-{day}.md"
+    fname = f"{tk}-{day}.md"
     path = os.path.join(GATES_DIR, fname)
-    content = f"""# Thesis Gate — {g.ticker.upper()} — {day}
+    content = f"""# Thesis Gate — {tk} — {day}
 
 **Analyst:** LiJie Guo
 **Status:** APPROVED
@@ -1082,20 +1205,19 @@ def houston_save_note(n: NoteIn):
 # ─── Market Sentiment & Event Analysis ─────────────────────────────────────
 
 @app.get("/api/market-events")
-def get_market_events(limit: int = 100, category: Optional[str] = None):
-    """Get all market events with sentiment analysis"""
+def get_market_events(limit: int = 100, category: Optional[str] = None, include_past: bool = False):
+    """Market events with sentiment analysis — upcoming ones (and yesterday's) by
+    default, so long-past events don't crowd out what's next."""
     from database import get_db
+    where, args = [], []
+    if category:
+        where.append("category = ?")
+        args.append(category)
+    if not include_past:
+        where.append("date(event_date) >= date('now', '-1 day')")
+    sql = "SELECT * FROM market_events" + (" WHERE " + " AND ".join(where) if where else "") + " ORDER BY event_date ASC LIMIT ?"
     with get_db() as conn:
-        if category:
-            rows = conn.execute(
-                "SELECT * FROM market_events WHERE category = ? ORDER BY event_date ASC LIMIT ?",
-                (category, limit)
-            ).fetchall()
-        else:
-            rows = conn.execute(
-                "SELECT * FROM market_events ORDER BY event_date ASC LIMIT ?",
-                (limit,)
-            ).fetchall()
+        rows = conn.execute(sql, (*args, limit)).fetchall()
 
         events = []
         for row in rows:
@@ -1134,6 +1256,16 @@ def create_market_event(event: dict):
         analysis = analyze_market_event(event_id)
 
         return {"id": event_id, "analysis": analysis}
+
+
+@app.delete("/api/market-events/{event_id}")
+def delete_market_event(event_id: int):
+    from database import get_db
+    with get_db() as conn:
+        cur = conn.execute("DELETE FROM market_events WHERE id = ?", (event_id,))
+    if not cur.rowcount:
+        raise HTTPException(404, "Event not found")
+    return {"status": "deleted"}
 
 
 @app.get("/api/market-events/{event_id}/analyze")

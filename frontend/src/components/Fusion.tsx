@@ -37,6 +37,8 @@ type CouncilJob = {
     agreement?: number;
     verdict?: string;
     chairRuling?: string;
+    independenceNote?: string;
+    ticker?: string;
 };
 
 const MODEL_ICONS: Record<string, string> = {
@@ -88,8 +90,15 @@ export default function FusionTab() {
                     setBusy(false);
                     localStorage.removeItem('aeonnimbus_council_job');
                 }
-            } catch {
-                /* keep polling */
+            } catch (e) {
+                // The analytics service keeps council jobs in memory — after a restart
+                // the job is gone for good, so stop instead of polling forever.
+                if (/unknown job/i.test(String(e))) {
+                    if (timer.current) clearInterval(timer.current);
+                    setBusy(false);
+                    localStorage.removeItem('aeonnimbus_council_job');
+                    setErr('The council run was lost when the analytics service restarted — convene it again.');
+                }
             }
         }, 4000);
     };
@@ -268,11 +277,22 @@ export default function FusionTab() {
                                 )}
                             </div>
                             <span className="text-xs text-white/50">seat agreement {job.agreement}%</span>
+                            {job.ticker && job.ticker !== ticker && (
+                                <span className="badge-gold">
+                                    council on {job.ticker}, not {ticker}
+                                </span>
+                            )}
                         </div>
                         <div className="card-cyan p-4">
                             <p className="stat-label mb-1 text-accent">Chair's ruling</p>
                             <p className="whitespace-pre-wrap text-sm leading-relaxed text-white/85">{job.chairRuling}</p>
                         </div>
+                        {job.independenceNote && (
+                            <p className="text-xs leading-relaxed text-white/40">
+                                <b className="text-white/60">How much the agreement means: </b>
+                                {job.independenceNote}
+                            </p>
+                        )}
                         <div className="grid gap-3 lg:grid-cols-2">
                             {job.seats.map((s) => (
                                 <details key={s.seat} className="card-glass p-4">

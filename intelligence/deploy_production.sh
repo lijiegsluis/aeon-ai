@@ -265,7 +265,7 @@ echo -e "${GREEN}✓ API started (PID: $API_PID)${NC}"
 # Wait for API to be ready
 echo "Waiting for API to start..."
 for i in {1..10}; do
-    if curl -s http://localhost:8001/health > /dev/null 2>&1; then
+    if curl -s http://localhost:8003/health > /dev/null 2>&1; then
         echo -e "${GREEN}✓ API is ready${NC}"
         break
     fi
@@ -310,13 +310,13 @@ echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━�
 echo ""
 echo -e "${BLUE}🌐 Access Points:${NC}"
 echo "   Dashboard:  http://localhost:5175"
-echo "   API:        http://localhost:8001"
-echo "   API Docs:   http://localhost:8001/docs"
+echo "   API:        http://localhost:8003"
+echo "   API Docs:   http://localhost:8003/docs"
 echo ""
 echo -e "${BLUE}📊 System Status:${NC}"
 
 # Get system stats
-STATS=$(curl -s http://localhost:8001/api/system/info)
+STATS=$(curl -s http://localhost:8003/api/system/info)
 echo "$STATS" | python3 -m json.tool
 
 echo ""

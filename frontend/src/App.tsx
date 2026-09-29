@@ -12,6 +12,7 @@ import DeepReports from './components/DeepReports';
 import DeepResearch from './components/DeepResearch';
 import Onboarding from './components/Onboarding';
 import AlertsManager from './components/AlertsManager';
+import AlertsWatcher from './components/AlertsWatcher';
 import ComparisonView from './components/ComparisonView';
 import AnalysisHistory from './components/AnalysisHistory';
 import WatchlistManager from './components/WatchlistManager';
@@ -73,7 +74,7 @@ export default function App() {
         <ErrorBoundary>
             <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--ink)' }}>
                 <Onboarding />
-                <AlertsManager />
+                <AlertsWatcher />
                 <CommandPalette tabs={TABS.map(([id]) => ({ id, label: TAB_LABEL[id] }))} />
                 <Nav />
                 {/* Tab bar */}
@@ -177,12 +178,7 @@ export default function App() {
                     )}
                     {tab === 'alerts' && (
                         <ErrorBoundary>
-                            <div className="space-y-4">
-                                <h2 className="text-2xl font-bold" style={{ color: 'var(--gold)' }}>
-                                    Alert Manager
-                                </h2>
-                                <p style={{ color: 'var(--ink2)' }}>Alerts run in background. Configure below.</p>
-                            </div>
+                            <AlertsManager />
                         </ErrorBoundary>
                     )}
                     {tab === 'history' && (

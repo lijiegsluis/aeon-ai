@@ -1,16 +1,24 @@
 /**
- * Buy the Rumor, Sell the News - Event Timing Matrix
- * Visualizes temporal distance to macro/earnings/geopolitical events.
- * Events come from the backend's market_events table; when that table has
- * nothing (or the service is unreachable) this falls back to a small set of
- * hardcoded sample events — both cases carry a `source` field, and demo/
- * sample events are visibly badged below so it's never ambiguous whether
- * you're looking at real (`manual`) or placeholder (`demo`) data.
+ * Buy the Rumor, Sell the News — event timing matrix.
+ * Upcoming events from the backend's market_events table, each with its D-X
+ * countdown, phase, the rule engine's read, and your own saved plan (consensus,
+ * intuition, exit day). When the backend is unreachable a few sample events are
+ * shown instead, always badged DEMO DATA.
  */
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ErrorNote } from './Terminal';
 import { SectionCard } from './report/shared';
-import { ANALYTICS_URL } from '../config';
+import { ANALYTICS_URL, PLATFORM_APP_URL, intelligenceTickerUrl } from '../config';
+import { jdelete, jget, jpost } from '../utils/api';
+import { useStore } from '../store';
+
+interface Analysis {
+    sentiment_score?: number;
+    sentiment_label?: string;
+    reasoning?: string;
+    recommended_action?: string;
+    affected_assets?: { ticker: string; match_type: string }[];
+}
 
 interface Event {
     id: number;
@@ -18,336 +26,451 @@ interface Event {
     category: 'macro' | 'earnings' | 'geopolitical' | 'general';
     event_date: string;
     affected_assets: string[];
-    consensus?: string;
-    user_intuition?: string;
-    exit_day?: number;
+    raw_text?: string;
     source?: string;
+    analysis?: Analysis;
 }
+
+type Plan = { consensus: string; intuition: string; discounting: string; exitDay: string; savedAt?: string };
+const PLAN_KEY = 'aeonnimbus_event_plans';
+const emptyPlan: Plan = { consensus: '', intuition: '', discounting: '', exitDay: '' };
+
+function loadPlans(): Record<string, Plan> {
+    try {
+        return JSON.parse(localStorage.getItem(PLAN_KEY) || '{}');
+    } catch {
+        return {};
+    }
+}
+
+/** "2026-10-14" is a calendar date, not a UTC instant — parse it as local midnight
+ * so the countdown doesn't slip a day west of Greenwich. */
+function parseLocalDate(s: string): Date {
+    const [y, m, d] = s.slice(0, 10).split('-').map(Number);
+    return new Date(y, (m || 1) - 1, d || 1);
+}
+
+function daysUntil(s: string): number {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Math.round((parseLocalDate(s).getTime() - today.getTime()) / 86400000);
+}
+
+const urgencyColor = (days: number) => (days <= 2 ? '#ef4444' : days <= 9 ? '#f59e0b' : days <= 20 ? '#10b981' : '#3b82f6');
+
+function phaseInfo(days: number) {
+    if (days > 20) return { phase: 'Pre-rumor', desc: 'Too early — the market is not pricing it yet', progress: 0 };
+    if (days > 9) return { phase: 'Accumulation', desc: 'Early entry window', progress: ((20 - days) / 20) * 100 };
+    if (days > 2) return { phase: 'Euphoria', desc: 'Coverage builds, retail arrives late', progress: ((20 - days) / 20) * 100 };
+    return { phase: 'Danger window', desc: 'Sell-the-news zone', progress: 100 };
+}
+
+const categoryIcons = { macro: '📊', earnings: '💼', geopolitical: '🌍', general: '📰' };
 
 export default function RumorNewsTiming() {
     const [events, setEvents] = useState<Event[]>([]);
+    const [pastEvents, setPastEvents] = useState<Event[]>([]);
+    const [isDemo, setIsDemo] = useState(false);
     const [showAddForm, setShowAddForm] = useState(false);
-    const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+    const [selected, setSelected] = useState<Event | null>(null);
+    const [plans, setPlans] = useState<Record<string, Plan>>(loadPlans);
+    const [draft, setDraft] = useState<Plan>(emptyPlan);
     const [filter, setFilter] = useState('');
+    const [showPast, setShowPast] = useState(false);
     const [err, setErr] = useState('');
+    const setTicker = useStore((s) => s.setTicker);
+    const [newEvent, setNewEvent] = useState({ title: '', category: 'macro' as Event['category'], event_date: '', affected_assets: '' });
 
-    // Form state
-    const [newEvent, setNewEvent] = useState({
-        title: '',
-        category: 'macro' as Event['category'],
-        event_date: '',
-        affected_assets: '',
-    });
+    const load = async () => {
+        try {
+            const data = await jget<{ events: Event[] }>(`${ANALYTICS_URL}/api/market-events?include_past=true&limit=300`);
+            const all = data.events ?? [];
+            setEvents(all.filter((e) => daysUntil(e.event_date) >= 0));
+            setPastEvents(all.filter((e) => daysUntil(e.event_date) < 0).reverse());
+            setIsDemo(false);
+            setErr('');
+        } catch (e) {
+            setErr(String(e));
+            setEvents(sampleEvents());
+            setPastEvents([]);
+            setIsDemo(true);
+        }
+    };
 
     useEffect(() => {
-        loadEvents();
-        const interval = setInterval(loadEvents, 30000); // Refresh every 30s
-        return () => clearInterval(interval);
+        load();
+        const id = setInterval(load, 60000);
+        return () => clearInterval(id);
     }, []);
 
-    const loadEvents = async () => {
-        try {
-            const res = await fetch(`${ANALYTICS_URL}/api/market-events`);
-            if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || res.statusText);
-            const data = await res.json();
-            setEvents(data.events?.length ? data.events : getSampleEvents());
-            setErr('');
-        } catch (e) {
-            setErr(String(e instanceof Error ? e.message : e));
-            setEvents(getSampleEvents());
+    const addEvent = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newEvent.title.trim() || !newEvent.event_date) {
+            setErr('An event needs a title and a date.');
+            return;
         }
-    };
-
-    const addEvent = async () => {
-        const assets = newEvent.affected_assets.split(',').map((a) => a.trim().toUpperCase());
+        const assets = newEvent.affected_assets
+            .split(/[\s,]+/)
+            .map((a) => a.trim().toUpperCase())
+            .filter(Boolean);
         try {
-            const res = await fetch(`${ANALYTICS_URL}/api/market-events`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ...newEvent,
-                    affected_assets: assets,
-                }),
-            });
-            if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || res.statusText);
+            await jpost(`${ANALYTICS_URL}/api/market-events`, { ...newEvent, source: 'manual', affected_assets: assets });
             setNewEvent({ title: '', category: 'macro', event_date: '', affected_assets: '' });
             setShowAddForm(false);
-            setErr('');
-            loadEvents();
+            load();
         } catch (e) {
-            setErr(String(e instanceof Error ? e.message : e));
+            setErr(String(e));
         }
     };
 
-    const getDaysRemaining = (dateStr: string): number => {
-        const eventDate = new Date(dateStr);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        return Math.ceil((eventDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    const removeEvent = async (id: number) => {
+        try {
+            await jdelete(`${ANALYTICS_URL}/api/market-events/${id}`);
+            setSelected(null);
+            load();
+        } catch (e) {
+            setErr(String(e));
+        }
     };
 
-    const getUrgencyColor = (days: number): string => {
-        if (days <= 3) return '#ef4444'; // Red
-        if (days <= 7) return '#f59e0b'; // Yellow
-        if (days <= 20) return '#10b981'; // Green
-        return '#3b82f6'; // Blue
+    const openEvent = (ev: Event) => {
+        setSelected(ev);
+        setDraft(plans[String(ev.id)] ?? emptyPlan);
     };
 
-    const getPhaseInfo = (days: number) => {
-        if (days > 20) return { phase: 'Quiet Accumulation', desc: 'Ideal time to look for the rumor', progress: ((days - 20) / 10) * 100 };
-        if (days > 9) return { phase: 'Quiet Accumulation', desc: 'Early entry window', progress: ((20 - days) / 11) * 100 };
-        if (days > 2)
-            return { phase: 'Mass Euphoria', desc: 'Media coverage builds, retail enters late', progress: ((9 - days) / 7) * 100 };
-        return { phase: 'Danger Window', desc: 'CRITICAL ZONE — sell the news', progress: ((3 - days) / 4) * 100 };
+    const savePlan = () => {
+        if (!selected) return;
+        const next = { ...plans, [String(selected.id)]: { ...draft, savedAt: new Date().toISOString() } };
+        setPlans(next);
+        localStorage.setItem(PLAN_KEY, JSON.stringify(next));
+        setSelected(null);
     };
 
-    const filteredEvents = filter
-        ? events.filter((e) => e.affected_assets.some((a) => a.toLowerCase().includes(filter.toLowerCase())))
-        : events;
-
-    const categoryIcons = { macro: '📊', earnings: '💼', geopolitical: '🌍', general: '📰' };
+    const q = filter.trim().toLowerCase();
+    const matches = (e: Event) => !q || e.title.toLowerCase().includes(q) || e.affected_assets.some((a) => a.toLowerCase().includes(q));
+    const shown = events.filter(matches);
+    const shownPast = pastEvents.filter(matches);
 
     return (
         <div className="animate-fade-in space-y-4" style={{ fontFamily: 'var(--sans)' }}>
-            {/* Header */}
             <div className="card p-6" style={{ background: 'linear-gradient(135deg, rgba(184,134,11,0.1) 0%, rgba(0,0,0,0.3) 100%)' }}>
-                <div className="flex items-center justify-between mb-2">
+                <div className="mb-2 flex items-center justify-between gap-3">
                     <h1 className="text-3xl font-bold" style={{ color: 'var(--gold)' }}>
                         ⚡ Buy the Rumor, Sell the News
                     </h1>
                     <button className="btn-primary" onClick={() => setShowAddForm(!showAddForm)}>
-                        + Add Event
+                        + Add event
                     </button>
                 </div>
                 <p className="text-sm" style={{ color: 'var(--ink2)' }}>
-                    Temporal-anticipation matrix — train your intuition by visualizing the exact distance to key events
+                    Every upcoming catalyst with its exact distance, its phase, and your plan for it. Click an event to write the plan.
                 </p>
             </div>
 
             {err && <ErrorNote msg={err} />}
+            {isDemo && <p className="text-xs text-gold-light">Showing sample events while the analytics service is unreachable.</p>}
 
-            {/* Add Event Form */}
             {showAddForm && (
-                <SectionCard title="New Event" icon="➕">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <input
-                            className="input-field"
-                            placeholder="Event title"
-                            value={newEvent.title}
-                            onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-                        />
-                        <select
-                            className="input-field"
-                            value={newEvent.category}
-                            onChange={(e) => setNewEvent({ ...newEvent, category: e.target.value as any })}
-                        >
-                            <option value="macro">Macro</option>
-                            <option value="earnings">Earnings</option>
-                            <option value="geopolitical">Geopolitical</option>
-                            <option value="general">General</option>
-                        </select>
-                        <input
-                            className="input-field"
-                            type="date"
-                            value={newEvent.event_date}
-                            onChange={(e) => setNewEvent({ ...newEvent, event_date: e.target.value })}
-                        />
-                        <input
-                            className="input-field"
-                            placeholder="Affected assets (comma-separated)"
-                            value={newEvent.affected_assets}
-                            onChange={(e) => setNewEvent({ ...newEvent, affected_assets: e.target.value })}
-                        />
-                    </div>
-                    <button className="btn-primary mt-3" onClick={addEvent}>
-                        Save Event
-                    </button>
+                <SectionCard title="New event" icon="➕">
+                    <form onSubmit={addEvent}>
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                            <input
+                                className="input-field"
+                                placeholder="Event title, e.g. NVDA Q3 earnings"
+                                value={newEvent.title}
+                                onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                            />
+                            <select
+                                className="input-field"
+                                value={newEvent.category}
+                                onChange={(e) => setNewEvent({ ...newEvent, category: e.target.value as Event['category'] })}
+                            >
+                                <option value="macro">Macro</option>
+                                <option value="earnings">Earnings</option>
+                                <option value="geopolitical">Geopolitical</option>
+                                <option value="general">General</option>
+                            </select>
+                            <input
+                                className="input-field"
+                                type="date"
+                                value={newEvent.event_date}
+                                onChange={(e) => setNewEvent({ ...newEvent, event_date: e.target.value })}
+                            />
+                            <input
+                                className="input-field"
+                                placeholder="Affected tickers, e.g. NVDA AMD SMH"
+                                value={newEvent.affected_assets}
+                                onChange={(e) => setNewEvent({ ...newEvent, affected_assets: e.target.value })}
+                            />
+                        </div>
+                        <button className="btn-primary mt-3" type="submit">
+                            Save event
+                        </button>
+                    </form>
                 </SectionCard>
             )}
 
-            {/* Filter */}
             <div className="card p-4">
                 <input
                     className="input-field"
-                    placeholder="Filter by asset (e.g. Oil, Nasdaq, BTC)"
+                    placeholder="Filter by ticker or title (e.g. NVDA, CPI, oil)"
                     value={filter}
                     onChange={(e) => setFilter(e.target.value)}
                 />
             </div>
 
-            {/* Events Matrix */}
             <div className="space-y-3">
-                {filteredEvents.map((event) => {
-                    const days = getDaysRemaining(event.event_date);
-                    const phaseInfo = getPhaseInfo(days);
-                    const urgencyColor = getUrgencyColor(days);
-
+                {shown.length === 0 && (
+                    <div className="card p-8 text-center text-white/50">No upcoming events{q ? ' match that filter' : ''}.</div>
+                )}
+                {shown.map((event) => {
+                    const days = daysUntil(event.event_date);
+                    const phase = phaseInfo(days);
+                    const color = urgencyColor(days);
+                    const plan = plans[String(event.id)];
+                    const exitDay = plan?.exitDay ? Number(plan.exitDay) : null;
                     return (
                         <div
                             key={event.id}
-                            className="card p-5 cursor-pointer hover:scale-[1.01] transition-transform"
-                            onClick={() => setSelectedEvent(event)}
-                            style={{ borderLeft: `4px solid ${urgencyColor}` }}
+                            className="card cursor-pointer p-5 transition-transform hover:scale-[1.01]"
+                            onClick={() => openEvent(event)}
+                            style={{ borderLeft: `4px solid ${color}` }}
                         >
-                            <div className="flex items-start justify-between mb-3">
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <span className="text-2xl">{categoryIcons[event.category]}</span>
-                                        <div>
-                                            <h3 className="font-bold text-lg" style={{ color: 'var(--gold)' }}>
-                                                {event.title}
-                                            </h3>
-                                            <div className="flex gap-2 mt-1 items-center flex-wrap">
-                                                {event.affected_assets.map((asset) => (
-                                                    <span key={asset} className="badge-accent text-xs">
-                                                        {asset}
-                                                    </span>
-                                                ))}
+                            <div className="mb-3 flex items-start justify-between gap-4">
+                                <div className="flex flex-1 items-center gap-3">
+                                    <span className="text-2xl">{categoryIcons[event.category] ?? '📰'}</span>
+                                    <div>
+                                        <h3 className="text-lg font-bold" style={{ color: 'var(--gold)' }}>
+                                            {event.title}
+                                        </h3>
+                                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                                            {event.affected_assets.map((asset) => (
+                                                <button
+                                                    key={asset}
+                                                    className="badge-accent text-xs"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setTicker(asset);
+                                                    }}
+                                                    title={`Make ${asset} the terminal ticker`}
+                                                >
+                                                    {asset}
+                                                </button>
+                                            ))}
+                                            {event.affected_assets[0] && (
                                                 <a
-                                                    href={`http://localhost:5175/?ticker=${encodeURIComponent(event.affected_assets[0] || '')}`}
+                                                    href={intelligenceTickerUrl(event.affected_assets[0])}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     onClick={(e) => e.stopPropagation()}
                                                     className="text-xs"
                                                     style={{ color: 'var(--gold)', opacity: 0.75 }}
-                                                    title="Opens Aeon Intelligence's own event view for this ticker — separate demo data, not shared with this app"
+                                                    title="Timing, news and insider activity for this ticker in Aeon Intelligence"
                                                 >
-                                                    View in Aeon Intelligence ↗
+                                                    {event.affected_assets[0]} in Intelligence ↗
                                                 </a>
-                                                <a
-                                                    href="http://localhost:5174"
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    onClick={(e) => e.stopPropagation()}
-                                                    className="text-xs"
-                                                    style={{ color: 'var(--gold)', opacity: 0.75 }}
-                                                    title="Opens Aeon Platform's Data Studio — a separate app, not ticker-linked (it lives outside this codebase)"
-                                                >
-                                                    View in Aeon Platform ↗
-                                                </a>
-                                                {event.source === 'demo' && (
-                                                    <span
-                                                        className="badge-gold text-xs"
-                                                        title="Placeholder sample event, not live market data"
-                                                    >
-                                                        DEMO DATA
-                                                    </span>
-                                                )}
-                                            </div>
+                                            )}
+                                            <a
+                                                href={PLATFORM_APP_URL}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="text-xs"
+                                                style={{ color: 'var(--gold)', opacity: 0.75 }}
+                                            >
+                                                Aeon Platform ↗
+                                            </a>
+                                            {event.source === 'demo' && <span className="badge-gold text-xs">DEMO DATA</span>}
+                                            {plan && (
+                                                <span className="badge-success text-xs">
+                                                    plan saved{exitDay != null ? ` · exit D-${exitDay}` : ''}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
-
-                                {/* Days Countdown */}
                                 <div
-                                    className="text-center px-4 py-2 rounded-lg"
-                                    style={{ background: `${urgencyColor}22`, border: `2px solid ${urgencyColor}` }}
+                                    className="rounded-lg px-4 py-2 text-center"
+                                    style={{ background: `${color}22`, border: `2px solid ${color}` }}
                                 >
-                                    <div className="text-3xl font-bold" style={{ color: urgencyColor }}>
+                                    <div className="text-3xl font-bold" style={{ color }}>
                                         D-{days}
                                     </div>
-                                    <div className="text-xs opacity-70">{new Date(event.event_date).toLocaleDateString()}</div>
+                                    <div className="text-xs opacity-70">{parseLocalDate(event.event_date).toLocaleDateString()}</div>
                                 </div>
                             </div>
 
-                            {/* Phase Progress Bar */}
                             <div className="mt-4">
-                                <div className="flex justify-between text-xs mb-1" style={{ color: 'var(--ink2)' }}>
-                                    <span className="font-semibold">{phaseInfo.phase}</span>
-                                    <span>{phaseInfo.desc}</span>
+                                <div className="mb-1 flex justify-between text-xs" style={{ color: 'var(--ink2)' }}>
+                                    <span className="font-semibold">{phase.phase}</span>
+                                    <span>
+                                        {exitDay != null && days <= exitDay ? `⚠️ past your planned exit (D-${exitDay})` : phase.desc}
+                                    </span>
                                 </div>
                                 <div className="h-2 rounded-full" style={{ background: 'rgba(255,255,255,0.1)' }}>
                                     <div
-                                        className="h-full rounded-full transition-all duration-300"
-                                        style={{ width: `${Math.min(100, Math.max(0, phaseInfo.progress))}%`, background: urgencyColor }}
+                                        className="h-full rounded-full"
+                                        style={{ width: `${Math.min(100, Math.max(2, phase.progress))}%`, background: color }}
                                     />
                                 </div>
                             </div>
 
-                            {/* Phase Stages */}
-                            <div className="grid grid-cols-3 gap-2 mt-3 text-xs">
-                                <div
-                                    className="p-2 rounded text-center"
-                                    style={{ background: days > 9 ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.05)' }}
-                                >
-                                    <div className="font-semibold">Accumulation</div>
-                                    <div className="opacity-60">D-20 to D-10</div>
-                                </div>
-                                <div
-                                    className="p-2 rounded text-center"
-                                    style={{ background: days > 2 && days <= 9 ? 'rgba(245,158,11,0.2)' : 'rgba(255,255,255,0.05)' }}
-                                >
-                                    <div className="font-semibold">Euphoria</div>
-                                    <div className="opacity-60">D-9 to D-2</div>
-                                </div>
-                                <div
-                                    className="p-2 rounded text-center"
-                                    style={{ background: days <= 2 ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.05)' }}
-                                >
-                                    <div className="font-semibold">Danger</div>
-                                    <div className="opacity-60">D-1 to D-0</div>
-                                </div>
+                            <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                                {[
+                                    ['Accumulation', 'D-20 to D-10', days > 9 && days <= 20, 'rgba(16,185,129,0.2)'],
+                                    ['Euphoria', 'D-9 to D-3', days > 2 && days <= 9, 'rgba(245,158,11,0.2)'],
+                                    ['Danger', 'D-2 to D-0', days <= 2, 'rgba(239,68,68,0.2)'],
+                                ].map(([label, range, on, bg]) => (
+                                    <div
+                                        key={label as string}
+                                        className="rounded p-2 text-center"
+                                        style={{ background: on ? (bg as string) : 'rgba(255,255,255,0.05)' }}
+                                    >
+                                        <div className="font-semibold">{label as string}</div>
+                                        <div className="opacity-60">{range as string}</div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     );
                 })}
             </div>
 
-            {/* Scenario Simulator Modal */}
-            {selectedEvent && (
+            {pastEvents.length > 0 && (
+                <div className="card p-4">
+                    <button className="text-sm text-white/60 hover:text-white" onClick={() => setShowPast(!showPast)}>
+                        {showPast ? '▾' : '▸'} Past events ({shownPast.length}) — review how your plans played out
+                    </button>
+                    {showPast && (
+                        <div className="mt-3 divide-y divide-white/[0.04]">
+                            {shownPast.map((e) => (
+                                <div
+                                    key={e.id}
+                                    className="flex cursor-pointer items-center justify-between py-2 text-sm"
+                                    onClick={() => openEvent(e)}
+                                >
+                                    <span>
+                                        <span className="text-white/40">{parseLocalDate(e.event_date).toLocaleDateString()}</span> ·{' '}
+                                        {e.title}
+                                    </span>
+                                    {plans[String(e.id)] && <span className="badge-success text-[10px]">plan</span>}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {selected && (
                 <div
                     className="fixed inset-0 z-50 flex items-center justify-center p-4"
                     style={{ background: 'rgba(0,0,0,0.85)' }}
-                    onClick={() => setSelectedEvent(null)}
+                    onClick={() => setSelected(null)}
                 >
-                    <div className="card p-6 max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex justify-between items-start mb-4">
-                            <h2 className="text-2xl font-bold" style={{ color: 'var(--gold)' }}>
-                                Scenario Simulator
-                            </h2>
-                            <button onClick={() => setSelectedEvent(null)} className="text-2xl">
+                    <div className="card max-h-[90vh] w-full max-w-2xl overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
+                        <div className="mb-4 flex items-start justify-between gap-4">
+                            <div>
+                                <p className="stat-label">Event plan · D-{daysUntil(selected.event_date)}</p>
+                                <h2 className="text-2xl font-bold" style={{ color: 'var(--gold)' }}>
+                                    {selected.title}
+                                </h2>
+                            </div>
+                            <button onClick={() => setSelected(null)} className="text-2xl" aria-label="Close">
                                 ✕
                             </button>
                         </div>
 
+                        {selected.analysis?.reasoning && (
+                            <div className="mb-4 rounded-lg p-3 text-sm" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                                <div className="mb-1 flex items-center gap-2">
+                                    <span className="stat-label">Rule engine read</span>
+                                    {selected.analysis.sentiment_label && (
+                                        <span className="badge text-[10px]">
+                                            {selected.analysis.sentiment_label} ({selected.analysis.sentiment_score})
+                                        </span>
+                                    )}
+                                    {selected.analysis.recommended_action && (
+                                        <span className="text-xs">{selected.analysis.recommended_action}</span>
+                                    )}
+                                </div>
+                                <p className="text-xs leading-relaxed text-white/60">
+                                    {selected.analysis.reasoning.split(' | ').join(' · ')}
+                                </p>
+                                <p className="mt-1 text-[10px] text-white/30">
+                                    Deterministic keyword and day-count rules — not a model forecast.
+                                </p>
+                            </div>
+                        )}
+
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-semibold mb-2">Consensus expectation</label>
-                                <textarea className="input-field" rows={2} placeholder="What is the market expecting?" />
+                                <label className="mb-2 block text-sm font-semibold">Consensus expectation</label>
+                                <textarea
+                                    className="input-field"
+                                    rows={2}
+                                    placeholder="What is the market expecting?"
+                                    value={draft.consensus}
+                                    onChange={(e) => setDraft({ ...draft, consensus: e.target.value })}
+                                />
                             </div>
-
                             <div>
-                                <label className="block text-sm font-semibold mb-2">Your intuition</label>
-                                <textarea className="input-field" rows={2} placeholder="What do you think will actually happen?" />
+                                <label className="mb-2 block text-sm font-semibold">Your intuition</label>
+                                <textarea
+                                    className="input-field"
+                                    rows={2}
+                                    placeholder="What do you think will actually happen?"
+                                    value={draft.intuition}
+                                    onChange={(e) => setDraft({ ...draft, intuition: e.target.value })}
+                                />
                             </div>
-
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-semibold mb-2">What is the price discounting today?</label>
-                                    <input className="input-field" placeholder="Current-price analysis" />
+                                    <label className="mb-2 block text-sm font-semibold">What is the price discounting today?</label>
+                                    <input
+                                        className="input-field"
+                                        placeholder="e.g. a 5% beat is priced in"
+                                        value={draft.discounting}
+                                        onChange={(e) => setDraft({ ...draft, discounting: e.target.value })}
+                                    />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-semibold mb-2">Exact position-exit day</label>
-                                    <input className="input-field" type="number" placeholder="D-X" />
+                                    <label className="mb-2 block text-sm font-semibold">Planned exit (days before)</label>
+                                    <input
+                                        className="input-field"
+                                        type="number"
+                                        min={0}
+                                        max={60}
+                                        placeholder="e.g. 3 for D-3"
+                                        value={draft.exitDay}
+                                        onChange={(e) => setDraft({ ...draft, exitDay: e.target.value })}
+                                    />
                                 </div>
                             </div>
-
                             <div
-                                className="p-4 rounded-lg"
+                                className="rounded-lg p-4"
                                 style={{ background: 'rgba(184,134,11,0.1)', border: '1px solid rgba(184,134,11,0.3)' }}
                             >
-                                <div className="font-semibold mb-2" style={{ color: 'var(--gold)' }}>
-                                    Decision matrix
+                                <div className="mb-2 font-semibold" style={{ color: 'var(--gold)' }}>
+                                    Decision checklist
                                 </div>
-                                <div className="text-sm space-y-1" style={{ color: 'var(--ink2)' }}>
-                                    <div>✓ Enter during the accumulation phase (D-20 to D-10)</div>
-                                    <div>✓ Monitor institutional flow</div>
-                                    <div>✓ Exit before D-2 (danger window)</div>
-                                    <div>⚠️ Never buy on D-1 or D-0</div>
+                                <div className="space-y-1 text-sm" style={{ color: 'var(--ink2)' }}>
+                                    <div>✓ Enter during accumulation (D-20 to D-10)</div>
+                                    <div>✓ Write the exit day down before entering</div>
+                                    <div>✓ Be out before the danger window (D-2)</div>
+                                    <div>⚠️ Never initiate on D-1 or D-0</div>
                                 </div>
                             </div>
-
-                            <button className="btn-primary w-full">Save Analysis</button>
+                            <div className="flex gap-3">
+                                <button className="btn-primary flex-1" onClick={savePlan}>
+                                    Save plan
+                                </button>
+                                {!isDemo && (
+                                    <button className="btn-secondary" onClick={() => removeEvent(selected.id)}>
+                                        Delete event
+                                    </button>
+                                )}
+                            </div>
+                            <p className="text-[10px] text-white/30">Plans are stored in this browser only.</p>
                         </div>
                     </div>
                 </div>
@@ -356,41 +479,36 @@ export default function RumorNewsTiming() {
     );
 }
 
-// Placeholder sample events — used only when the backend has no events yet
-// or is unreachable. Always carries source: 'demo' so the UI can badge it.
-function getSampleEvents(): Event[] {
-    const today = new Date();
+// Placeholder events shown only when the analytics service is unreachable — always badged DEMO DATA.
+function sampleEvents(): Event[] {
+    const inDays = (n: number) => {
+        const d = new Date();
+        d.setDate(d.getDate() + n);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
     return [
         {
-            id: 1,
-            title: 'Upcoming US CPI Print',
+            id: -1,
+            title: 'US CPI print (sample)',
             category: 'macro',
-            event_date: new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            affected_assets: ['SPY', 'NASDAQ', 'BONDS'],
+            event_date: inDays(5),
+            affected_assets: ['SPY', 'TLT'],
             source: 'demo',
         },
         {
-            id: 2,
-            title: 'Nvidia Q4 Earnings',
+            id: -2,
+            title: 'NVIDIA earnings (sample)',
             category: 'earnings',
-            event_date: new Date(today.getTime() + 12 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            affected_assets: ['NVDA', 'SEMICONDUCTOR'],
+            event_date: inDays(12),
+            affected_assets: ['NVDA', 'SMH'],
             source: 'demo',
         },
         {
-            id: 3,
-            title: 'OPEC+ Summit — Production Decision',
-            category: 'geopolitical',
-            event_date: new Date(today.getTime() + 18 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            affected_assets: ['OIL', 'ENERGY'],
-            source: 'demo',
-        },
-        {
-            id: 4,
-            title: 'Fed Meeting (FOMC)',
+            id: -3,
+            title: 'FOMC decision (sample)',
             category: 'macro',
-            event_date: new Date(today.getTime() + 25 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            affected_assets: ['SPY', 'BONDS', 'GOLD'],
+            event_date: inDays(25),
+            affected_assets: ['SPY', 'GLD'],
             source: 'demo',
         },
     ];
