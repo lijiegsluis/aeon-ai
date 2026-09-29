@@ -84,6 +84,11 @@ def test_live_signals_and_levels():
     assert ae.live_signals(lambda t: stock, bt, today, clusters=stale) == []
 
 
+def test_insider_skips_funds():
+    assert ae._operating_company({"company": "Northern Trust Corp"})
+    assert not ae._operating_company({"company": "First Trust High Yield Opportunities 2027 Term Fund"})
+
+
 def test_runup_signal_requires_uptrend():
     today = date(2026, 3, 2)
     rising = bars("2025-11-03", [100.0 + 0.2 * i for i in range(85)])

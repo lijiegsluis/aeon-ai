@@ -465,7 +465,8 @@ function Intelligence() {
                 setSignals(data.signals || []);
                 setSentiment(data.sentiment || []);
                 setInsiderTrades(data.insider_trades || []);
-                setDailyBrief(data.daily_brief || null);
+                // the backend serves {} until the first brief is built
+                setDailyBrief(data.daily_brief?.market_context ? data.daily_brief : null);
                 setConnected(true);
                 setLastUpdate(new Date().toLocaleTimeString());
             } else {
@@ -482,7 +483,7 @@ function Intelligence() {
 
             if (aiPredictionsRes.ok) {
                 const aiData = await aiPredictionsRes.json();
-                setAiPredictions(aiData);
+                setAiPredictions(aiData?.meta ? aiData : null);
             }
 
             if (telegramRes.ok) {
@@ -1279,6 +1280,19 @@ function Intelligence() {
                                 </tbody>
                             </table>
                         </section>
+                    </div>
+                )}
+
+                {((view === 'brief' && !dailyBrief) || (view === 'ai-predictions' && !aiPredictions)) && (
+                    <div className="terminal-view">
+                        <div className="view-header">
+                            <h1>{view === 'brief' ? 'DAILY INTELLIGENCE BRIEF' : 'AI PREDICTION ENGINE'}</h1>
+                            <p>
+                                {connected
+                                    ? 'Being built from the first alpha-engine pass — this takes a minute or two after the backend starts.'
+                                    : 'Waiting for the Intelligence backend…'}
+                            </p>
+                        </div>
                     </div>
                 )}
 

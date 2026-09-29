@@ -52,10 +52,10 @@ def _play(sig: Dict[str, Any], strategies: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "ticker": sig["ticker"],
         "market_cap": "—",
-        "action": f"BUY — {sig['strategy_name']}",
+        "action": f"{'BUY' if sig.get('backtest_edge') else 'WATCH'} — {sig['strategy_name']}",
         "target": f"${sig['target']}",
         "stop": f"${sig['stop']}",
-        "confidence": f"{sig['confidence']:.0f}%" if sig.get("confidence") is not None else "unproven",
+        "confidence": f"{sig['confidence']:.0f}%" if sig.get("confidence") is not None else "not rated — edge unproven",
         "timeframe": f"exit {sig['exit_date']} ({STRATEGY_TIMEFRAME.get(sig['strategy'], '')})",
         "rationale": sig["reason"],
         "risks": f"Stop at ${sig['stop']} (2× ATR below ${sig['entry_price']}). {evidence}.",

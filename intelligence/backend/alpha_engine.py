@@ -21,6 +21,7 @@ is too thin to call it an edge.
 from __future__ import annotations
 
 import math
+import re
 import sqlite3
 import statistics
 import threading
@@ -193,13 +194,21 @@ def summarize(events: List[Dict[str, Any]]) -> Dict[str, Any]:
 PriceFn = Callable[[str], List[Dict[str, Any]]]
 
 
+_FUND = re.compile(r"\b(fund|etf|income shares)\b", re.I)
+
+
+def _operating_company(c) -> bool:
+    """Insider buying in closed-end funds and ETFs says little about a business — skip them."""
+    return not _FUND.search(c.get("company") or "")
+
+
 def backtest_insider(clusters, prices: PriceFn, spy, hold: int = 20, min_value: float = 100_000,
                      min_insiders: int = 2, min_price: float = 2) -> List[Dict[str, Any]]:
     out = []
     for c in clusters:
         if (c.get("value") or 0) < min_value or (c.get("price") or 0) < min_price or c.get("insiders", 0) < min_insiders:
             continue
-        if "P" not in (c.get("trade_type") or "P"):
+        if "P" not in (c.get("trade_type") or "P") or not _operating_company(c):
             continue
         bars = prices(c["ticker"])
         if not bars:
@@ -356,6 +365,8 @@ def live_signals(prices: PriceFn, backtests: Dict[str, Dict[str, Any]], today: O
     # insider clusters filed in the last 7 calendar days
     for c in clusters or []:
         if (c.get("value") or 0) < 100_000 or (c.get("price") or 0) < 2 or c.get("insiders", 0) < 2:
+            continue
+        if not _operating_company(c):
             continue
         if (today - date.fromisoformat(c["filing_date"])).days > 7:
             continue
