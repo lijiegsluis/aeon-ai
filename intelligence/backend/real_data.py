@@ -34,7 +34,8 @@ try:  # browser TLS fingerprint for hosts that 403/429 plain HTTP clients from c
     from curl_cffi import requests as _browser
 except ImportError:  # pragma: no cover
     _browser = None
-_BROWSER_HOSTS = ("finance.yahoo.com", "bls.gov", "coingecko.com")
+_BROWSER_HOSTS = ("finance.yahoo.com", "bls.gov", "coingecko.com", "nasdaq.com", "openinsider.com",
+                  "dataviz.cnn.io")
 
 # Real, accumulated-since-process-start per-source call outcomes - never
 # randomized or backfilled. Powers /api/sources/status. Keyed by the caller's
@@ -307,6 +308,17 @@ def get_investing_economic_calendar() -> Optional[List[Dict[str, Any]]]:
 
 
 def get_earnings_date(ticker: str) -> Optional[str]:
+    """Next report date: Nasdaq's per-ticker earnings date (keyless, works from cloud
+    hosts), then Yahoo's calendarEvents as a second attempt."""
+    import alpha_data
+
+    info = alpha_data.next_earnings(ticker)
+    if info:
+        return f"{info['date']}T16:00:00"
+    return _yahoo_earnings_date(ticker)
+
+
+def _yahoo_earnings_date(ticker: str) -> Optional[str]:
     """Real next-earnings date for a ticker via Yahoo's quoteSummary calendarEvents module.
 
     This endpoint requires a valid crumb/cookie as of 2026 (confirmed live: a bare

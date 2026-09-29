@@ -35,6 +35,10 @@ jobs:
                   PYTHONPATH: .
                   AEON_INTEL_DB_PATH: /tmp/aeon/intelligence.db
               run: python ../../.github/scripts/smoke_intelligence.py
-            - name: Probe candidate sources
+            - name: Alpha engine on real data
               working-directory: intelligence/backend
-              run: python ../../.github/scripts/probe_sources.py
+              timeout-minutes: 25
+              env:
+                  PYTHONPATH: .
+                  AEON_INTEL_DB_PATH: /tmp/aeon/intelligence.db
+              run: python ../../.github/scripts/smoke_alpha.py

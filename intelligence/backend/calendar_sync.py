@@ -203,9 +203,17 @@ def seed_calendar():
         ('META', 'Meta Q4 Earnings', 'Ad revenue, AI spending, Reality Labs'),
         ('AMZN', 'Amazon Q4 Earnings', 'AWS growth, retail margins, Prime growth'),
     ]
+    import alpha_data
+
+    covered = set()
     for i, (ticker, title, desc) in enumerate(tech_earnings):
-        real_date_iso = real_data.get_earnings_date(ticker)
+        info = alpha_data.next_earnings(ticker)
+        real_date_iso = f"{info['date']}T16:00:00" if info else real_data.get_earnings_date(ticker)
         if real_date_iso:
+            covered.add(ticker)
+            if info and info.get("estimated"):
+                title = f"{title} — estimated date"
+                desc = f"{desc}. Date is Zacks' projection from past reporting dates; the company hasn't confirmed it yet."
             events.append({
                 'title': title,
                 'description': desc,
@@ -223,6 +231,29 @@ def seed_calendar():
                 'affected_tickers': ticker,
                 'impact_score': 8.5 if ticker in ['AAPL', 'NVDA', 'TSLA'] else 8.0
             })
+
+    # Every other large company reporting in the next ~6 weeks, straight from Nasdaq's
+    # market-wide earnings calendar (report time: pre-market 8:00, after-hours 16:05).
+    try:
+        upcoming = alpha_data.earnings_between(now.date(), now.date() + timedelta(days=42))
+    except Exception as e:
+        print(f"[calendar_sync] earnings calendar failed: {e}")
+        upcoming = []
+    for row in upcoming:
+        if row["symbol"] in covered or (row.get("market_cap") or 0) < 100e9:
+            continue
+        covered.add(row["symbol"])
+        hh, mm = {"pre": (8, 0), "after": (16, 5)}.get(row["time"], (16, 0))
+        when = {"pre": "before the open", "after": "after the close"}.get(row["time"], "time not announced")
+        est = f", consensus EPS ${row['eps_forecast']:.2f}" if row.get("eps_forecast") is not None else ""
+        events.append({
+            'title': f"{row['name'] or row['symbol']} Earnings",
+            'description': f"Quarter ending {row.get('fiscal_quarter') or '—'}, reporting {when}{est}. Per Nasdaq's earnings calendar.",
+            'date': datetime.fromisoformat(row['date']).replace(hour=hh, minute=mm).isoformat(),
+            'event_type': 'earnings',
+            'affected_tickers': row['symbol'],
+            'impact_score': 8.0,
+        })
 
     # Oil & Energy — EIA publishes weekly, always Wednesday 10:30am ET; the
     # weekday/time is real, we just walk forward week by week from today.

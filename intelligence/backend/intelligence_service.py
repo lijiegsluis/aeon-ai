@@ -26,6 +26,8 @@ import history_db
 import telegram_feed
 import backtest_engine
 import calendar_sync
+import alpha_engine
+import alpha_data
 from prediction_engine import generate_ai_predictions, generate_daily_brief
 
 app = FastAPI(title="Aeon Nimbus Intelligence API", version="1.0.0")
@@ -424,12 +426,25 @@ def generate_signals():
     sid = 0
     now_iso = datetime.now().isoformat()
 
+    # Alpha-engine trades first: each has an entry, stop, target and a backtested track record.
+    seen_tickers = set()
+    for a in alpha_engine.get_state().get("signals") or []:
+        sid += 1
+        out.append({
+            "id": sid, "ticker": a["ticker"], "signal_type": a["strategy"], "phase": "ACCUMULATION",
+            "entry_price": a["entry_price"], "target_price": a["target"], "stop_loss": a["stop"],
+            "confidence": a["confidence"] if a["confidence"] is not None else 50.0,
+            "reasoning": f"{a['strategy_name']}: {a['reason']}. Exit by {a['exit_date']}.",
+            "trigger": a["strategy"], "generated_at": now_iso, "exit_date": a["exit_date"],
+            "backtest_edge": a["backtest_edge"], "alpha": True,
+        })
+        seen_tickers.add(a["ticker"])
+
     buys = [t for t in INSIDER_TRADES if t["transaction_type"] == "BUY"]
     by_ticker: Dict[str, List[Dict[str, Any]]] = {}
     for t in buys:
         by_ticker.setdefault(t["ticker"], []).append(t)
 
-    seen_tickers = set()
     for ticker, trades in by_ticker.items():
         distinct_insiders = sorted({t["insider_name"] for t in trades})
         if len(distinct_insiders) >= 2:
@@ -506,7 +521,7 @@ def generate_signals():
                 "trigger": "crypto_momentum", "generated_at": now_iso,
             })
 
-    return sorted(out, key=lambda s: s["confidence"], reverse=True)[:25]
+    return sorted(out, key=lambda s: (not s.get("alpha"), -(s["confidence"] or 0)))[:30]
 
 
 def generate_crypto():
@@ -881,6 +896,10 @@ def _start_intel_data():
         backtest_engine.start_background()
     except Exception as e:
         print(f"[backtest_engine] failed to start: {e}")
+    try:
+        alpha_engine.start_background()
+    except Exception as e:
+        print(f"[alpha_engine] failed to start: {e}")
 
 # ─── Request/Response Models ─────────────────────────────────
 
@@ -1201,7 +1220,7 @@ def get_intel_dashboard():
     /api/volatility - all real, none of them the old fabricated populated_api.py generators."""
     return {
         "news": _all_news()[:20],
-        "signals": SIGNALS,
+        "signals": generate_signals(),  # cheap and in-memory; always reflects the latest alpha run
         "crypto": CRYPTO,
         "sentiment": SENTIMENT,
         "insider_trades": INSIDER_TRADES,
@@ -1344,6 +1363,41 @@ def get_volatility_endpoint():
         "last_update": datetime.now().isoformat(),
     }
 
+@app.get("/api/alpha")
+def get_alpha():
+    """Live alpha signals, each strategy's backtest vs the S&P 500, and the forward
+    paper-trading record built from every signal the engine has issued."""
+    state = alpha_engine.get_state()
+    try:
+        book = alpha_engine.portfolio(alpha_data.price_history)
+    except Exception as e:
+        book = {"open": [], "closed": [], "stats": {}, "equity": [], "error": str(e)[:200]}
+    strategies = {}
+    for key, meta in alpha_engine.STRATEGIES.items():
+        bt = (state.get("backtests") or {}).get(key) or {}
+        strategies[key] = {**meta, **{k: v for k, v in bt.items() if k != "events"}, "sample_events": (bt.get("events") or [])[:12]}
+    return {
+        "status": state.get("status"),
+        "generated_at": state.get("generated_at"),
+        "backtested_at": state.get("backtested_at"),
+        "errors": state.get("errors"),
+        "signals": state.get("signals") or [],
+        "strategies": strategies,
+        "portfolio": book,
+        "disclaimer": ("Rule-based research signals with their historical evidence, not investment advice. "
+                       "Backtests use one year of events with overlapping windows and no trading costs."),
+    }
+
+
+@app.get("/api/alpha/strategy/{key}")
+def get_alpha_strategy(key: str):
+    state = alpha_engine.get_state()
+    bt = (state.get("backtests") or {}).get(key)
+    if key not in alpha_engine.STRATEGIES:
+        raise HTTPException(404, "unknown strategy")
+    return {"key": key, **alpha_engine.STRATEGIES[key], **(bt or {"events": []})}
+
+
 _SYMBOL_RE = re.compile(r"^[A-Z0-9.\-^=]{1,12}$")
 
 
@@ -1442,7 +1496,7 @@ def get_ticker_lens(symbol: str):
             "buy_value": sum(t["total_value"] or 0 for t in buys),
             "sell_value": sum(t["total_value"] or 0 for t in sells),
         },
-        "signals": [s for s in SIGNALS if (s.get("ticker") or "").upper() == tk],
+        "signals": [s for s in generate_signals() if (s.get("ticker") or "").upper() == tk],
         "predictions": predictions,
         "ai_mode": (AI_PREDICTIONS.get("meta") or {}).get("mode"),
         "last_update": datetime.now().isoformat(),

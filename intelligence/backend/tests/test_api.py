@@ -16,6 +16,9 @@ def offline(monkeypatch):
                  "get_current_price", "get_earnings_date"):
         monkeypatch.setattr(real_data, name, lambda *a, **k: None)
     monkeypatch.setattr(real_data, "get_fomc_schedule", lambda: {})
+    import alpha_data
+    monkeypatch.setattr(alpha_data, "earnings_between", lambda *a, **k: [])
+    monkeypatch.setattr(alpha_data, "next_earnings", lambda t: None)
     monkeypatch.setattr(real_data, "get_bls_schedule", lambda: {})
 
 
