@@ -5,27 +5,25 @@
  */
 import { useStore } from '../store';
 import PDFExport from './PDFExport';
-import {
-    ScoreCards,
-    HealthScenarioCards,
-    MarketDataCards,
-    AnalysisCards,
-    CompanyDataCards,
-    BottomSection,
-} from './report';
+import { ScoreCards, HealthScenarioCards, MarketDataCards, AnalysisCards, CompanyDataCards, BottomSection } from './report';
 
 export default function ReportViewer() {
     const { result, clearResult, setView } = useStore();
     if (!result) return null;
 
-    const goBack = () => { clearResult(); setView('analysis'); };
+    const goBack = () => {
+        clearResult();
+        setView('analysis');
+    };
 
     return (
         <div className="mx-auto max-w-6xl animate-fade-in">
             {/* Header */}
             <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
-                    <button onClick={goBack} className="btn-secondary text-base" id="new-analysis-btn">← New</button>
+                    <button onClick={goBack} className="btn-secondary text-base" id="new-analysis-btn">
+                        ← New
+                    </button>
                     <div>
                         <div className="flex items-center gap-2">
                             <h1 className="font-display text-2xl font-extrabold text-white">{result.ticker}</h1>
@@ -60,7 +58,9 @@ export default function ReportViewer() {
                 <div className="mb-4 rounded-xl border border-gold/30 bg-gold/10 px-5 py-3 text-sm text-gold" id="fallback-notice">
                     <p className="font-semibold">⚠️ Some data sources were unavailable. Showing estimated values for:</p>
                     <ul className="mt-1 ml-4 list-disc text-gold/80">
-                        {result.fallbacks.map((f, i) => <li key={i}>{f}</li>)}
+                        {result.fallbacks.map((f, i) => (
+                            <li key={i}>{f}</li>
+                        ))}
                     </ul>
                 </div>
             )}

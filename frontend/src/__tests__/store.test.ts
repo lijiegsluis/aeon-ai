@@ -11,16 +11,35 @@ const mockResponse: AnalysisResponse = {
     ticker: 'AAPL',
     timestamp: new Date().toISOString(),
     financials: {
-        ticker: 'AAPL', companyName: 'Apple Inc.', price: 178.72, change: 2.35,
-        changePercent: 1.33, open: 176.15, high: 179.2, low: 175.82,
-        previousClose: 176.37, volume: 52438100, marketCap: 2780000,
-        pe: 28.52, eps: 6.27, beta: 1.24, weekHigh52: 199.62, weekLow52: 164.08,
-        revenue: 383290000000, grossMargin: 45.96, debtToEquity: 1.87,
-        dividendYield: 0.55, sector: 'Technology',
+        ticker: 'AAPL',
+        companyName: 'Apple Inc.',
+        price: 178.72,
+        change: 2.35,
+        changePercent: 1.33,
+        open: 176.15,
+        high: 179.2,
+        low: 175.82,
+        previousClose: 176.37,
+        volume: 52438100,
+        marketCap: 2780000,
+        pe: 28.52,
+        eps: 6.27,
+        beta: 1.24,
+        weekHigh52: 199.62,
+        weekLow52: 164.08,
+        revenue: 383290000000,
+        grossMargin: 45.96,
+        debtToEquity: 1.87,
+        dividendYield: 0.55,
+        sector: 'Technology',
     },
     sentiment: {
-        bullishPercent: 60, bearishPercent: 25, neutralPercent: 15,
-        totalPosts: 50, posts: [], themes: ['growth'],
+        bullishPercent: 60,
+        bearishPercent: 25,
+        neutralPercent: 15,
+        totalPosts: 50,
+        posts: [],
+        themes: ['growth'],
     },
     risks: [],
     catalysts: [],
@@ -50,9 +69,15 @@ const mockResponse: AnalysisResponse = {
     newsHeadlines: null,
     earningsQualityScore: null,
     researchSources: {
-        financialData: [], technicalAnalysis: [], secFilings: [],
-        financialStatements: [], companyResearch: [], newsSentiment: [],
-        analystData: [], valuationReferences: [], earningsDividends: [],
+        financialData: [],
+        technicalAnalysis: [],
+        secFilings: [],
+        financialStatements: [],
+        companyResearch: [],
+        newsSentiment: [],
+        analystData: [],
+        valuationReferences: [],
+        earningsDividends: [],
         riskCompliance: [],
     },
     report: 'Mock report text',
@@ -143,10 +168,13 @@ describe('store – runAnalysis', () => {
     });
 
     it('sets error on failed fetch', async () => {
-        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-            ok: false,
-            json: () => Promise.resolve({ error: 'Rate limit exceeded' }),
-        }));
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockResolvedValue({
+                ok: false,
+                json: () => Promise.resolve({ error: 'Rate limit exceeded' }),
+            }),
+        );
 
         await useStore.getState().runAnalysis('http://localhost:8787');
 
@@ -156,11 +184,11 @@ describe('store – runAnalysis', () => {
     });
 
     it('prevents duplicate concurrent requests', async () => {
-        const fetchMock = vi.fn().mockImplementation(
-            () => new Promise((resolve) =>
-                setTimeout(() => resolve({ ok: true, json: () => Promise.resolve(mockResponse) }), 100)
-            )
-        );
+        const fetchMock = vi
+            .fn()
+            .mockImplementation(
+                () => new Promise((resolve) => setTimeout(() => resolve({ ok: true, json: () => Promise.resolve(mockResponse) }), 100)),
+            );
         vi.stubGlobal('fetch', fetchMock);
 
         // Start two concurrent requests for the same ticker

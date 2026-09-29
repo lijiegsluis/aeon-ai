@@ -1,5 +1,27 @@
-import type { AnalysisResponse, AnalysisKeys, Env, FinancialData, TechnicalAnalysis, SentimentResult, RiskFactor, Catalyst, InsiderActivity, EarningsData, BalanceSheetData } from './types';
-import { fetchFinancials, fetchTechnicalIndicators, fetchInsiderTrades, fetchEarningsSurprises, fetchPeers, fetchAnalystConsensus, fetchPriceTargets, fetchInstitutionalOwnership, fetchBalanceSheet } from './finnhub';
+import type {
+    AnalysisResponse,
+    AnalysisKeys,
+    Env,
+    FinancialData,
+    TechnicalAnalysis,
+    SentimentResult,
+    RiskFactor,
+    Catalyst,
+    InsiderActivity,
+    EarningsData,
+    BalanceSheetData,
+} from './types';
+import {
+    fetchFinancials,
+    fetchTechnicalIndicators,
+    fetchInsiderTrades,
+    fetchEarningsSurprises,
+    fetchPeers,
+    fetchAnalystConsensus,
+    fetchPriceTargets,
+    fetchInstitutionalOwnership,
+    fetchBalanceSheet,
+} from './finnhub';
 import { fetchRedditPosts } from './rss';
 import { analyzeSentiment } from './groq';
 import { extractRisks, synthesizeReport, generatePremiumInsights } from './gemini';
@@ -9,18 +31,39 @@ import { generateSecondOpinion } from './cerebras';
 import { buildResearchSources } from './sources';
 import { logger } from './logger';
 import {
-    computeInvestmentScore, computeFinancialHealth, computeAeonScore,
-    computeMomentum, computeValueGrowth, computeRiskReward,
-    computeDividendAnalysis, computeExtendedTechnicals, computeValuationModels,
+    computeInvestmentScore,
+    computeFinancialHealth,
+    computeAeonScore,
+    computeMomentum,
+    computeValueGrowth,
+    computeRiskReward,
+    computeDividendAnalysis,
+    computeExtendedTechnicals,
+    computeValuationModels,
     computeEarningsQuality,
 } from './compute';
 import {
-    getMockFinancials, getMockSentiment, getMockRisks, getMockCatalysts,
-    getMockAudit, getMockReport, getMockTechnicals, getMockInsiderActivity,
-    getMockEarnings, getMockPeers, getMockSECFilings, getMockAIConsensus,
-    getMockInvestmentScore, getMockFinancialHealth, getMockAeonScore,
-    getMockScenarioAnalysis, getMockRevenueBreakdown, getMockMomentum,
-    getMockValueGrowth, getMockCompetitiveMoat, getMockRiskReward,
+    getMockFinancials,
+    getMockSentiment,
+    getMockRisks,
+    getMockCatalysts,
+    getMockAudit,
+    getMockReport,
+    getMockTechnicals,
+    getMockInsiderActivity,
+    getMockEarnings,
+    getMockPeers,
+    getMockSECFilings,
+    getMockAIConsensus,
+    getMockInvestmentScore,
+    getMockFinancialHealth,
+    getMockAeonScore,
+    getMockScenarioAnalysis,
+    getMockRevenueBreakdown,
+    getMockMomentum,
+    getMockValueGrowth,
+    getMockCompetitiveMoat,
+    getMockRiskReward,
     getMockDividendAnalysis,
 } from './mock';
 
@@ -56,11 +99,7 @@ export default {
 
         // ── Health check ─────────────────────────────────────────────
         if (new URL(request.url).pathname === '/health') {
-            return handleCORS(
-                request,
-                env,
-                Response.json({ status: 'ok', service: 'aeonnimbus-worker', version: '3.0.0' })
-            );
+            return handleCORS(request, env, Response.json({ status: 'ok', service: 'aeonnimbus-worker', version: '3.0.0' }));
         }
 
         // ── Main analyze endpoint ────────────────────────────────────
@@ -71,7 +110,7 @@ export default {
                 return handleCORS(
                     request,
                     env,
-                    Response.json({ error: 'Rate limit exceeded. Maximum 30 requests per hour.' }, { status: 429 })
+                    Response.json({ error: 'Rate limit exceeded. Maximum 30 requests per hour.' }, { status: 429 }),
                 );
             }
 
@@ -83,17 +122,13 @@ export default {
                     return handleCORS(
                         request,
                         env,
-                        Response.json({ error: 'Invalid JSON body. Send { "ticker": "AAPL" }' }, { status: 400 })
+                        Response.json({ error: 'Invalid JSON body. Send { "ticker": "AAPL" }' }, { status: 400 }),
                     );
                 }
                 const ticker = body.ticker;
 
                 if (!ticker || typeof ticker !== 'string') {
-                    return handleCORS(
-                        request,
-                        env,
-                        Response.json({ error: 'Missing or invalid ticker' }, { status: 400 })
-                    );
+                    return handleCORS(request, env, Response.json({ error: 'Missing or invalid ticker' }, { status: 400 }));
                 }
 
                 const upperTicker = ticker.toUpperCase().trim();
@@ -103,7 +138,10 @@ export default {
                     return handleCORS(
                         request,
                         env,
-                        Response.json({ error: 'Invalid ticker format. Use 1-10 alphanumeric characters (e.g., AAPL, MSFT, BRK.B).' }, { status: 400 })
+                        Response.json(
+                            { error: 'Invalid ticker format. Use 1-10 alphanumeric characters (e.g., AAPL, MSFT, BRK.B).' },
+                            { status: 400 },
+                        ),
                     );
                 }
 
@@ -123,13 +161,7 @@ export default {
                 const forceDemoOnly = env.DEMO_ONLY === 'true';
 
                 // Check if we should use demo mode (any required key missing = demo)
-                const isDemo =
-                    forceDemoOnly ||
-                    !keys ||
-                    !keys.finnhub ||
-                    !keys.groq ||
-                    !keys.gemini ||
-                    !keys.cohere;
+                const isDemo = forceDemoOnly || !keys || !keys.finnhub || !keys.groq || !keys.gemini || !keys.cohere;
 
                 let result: AnalysisResponse;
 
@@ -137,7 +169,8 @@ export default {
                     result = buildDemoResponse(upperTicker);
                     if (forceDemoOnly && keys && keys.finnhub) {
                         // User supplied keys but we're in demo-only mode — tell them to self-host
-                        result.hostedDemoNotice = '🏠 This hosted instance runs in demo mode only to keep it free. For live data, deploy your own instance in 5 minutes — it\'s free! See github.com/myProjectsRavi/AeonNimbus-AI';
+                        result.hostedDemoNotice =
+                            "🏠 This hosted instance runs in demo mode only to keep it free. For live data, deploy your own instance in 5 minutes — it's free! See github.com/myProjectsRavi/AeonNimbus-AI";
                     }
                 } else {
                     result = await buildLiveResponse(upperTicker, keys!, env.SEC_API_EMAIL);
@@ -147,20 +180,12 @@ export default {
             } catch (err) {
                 const message = err instanceof Error ? err.message : 'Unknown error';
                 logger.error('handler', 'Analysis failed', err);
-                return handleCORS(
-                    request,
-                    env,
-                    Response.json({ error: message, disclaimer: DISCLAIMER }, { status: 500 })
-                );
+                return handleCORS(request, env, Response.json({ error: message, disclaimer: DISCLAIMER }, { status: 500 }));
             }
         }
 
         // ── 404 ──────────────────────────────────────────────────────
-        return handleCORS(
-            request,
-            env,
-            Response.json({ error: 'Not found. Use POST /analyze' }, { status: 404 })
-        );
+        return handleCORS(request, env, Response.json({ error: 'Not found. Use POST /analyze' }, { status: 404 }));
     },
 } satisfies ExportedHandler<Env>;
 
@@ -210,16 +235,53 @@ function buildDemoResponse(upperTicker: string): AnalysisResponse {
 
 async function buildLiveResponse(upperTicker: string, keys: AnalysisKeys, secEmail?: string): Promise<AnalysisResponse> {
     // ── Phase 1: Data Collection ─────────────────────────────
-    const { financials, sentiment, risks, catalysts, newsHeadlines, technicals, candles, insiderActivity, earnings, peers, secFilings, secCik, analystConsensus, priceTarget, institutionalOwnership, balanceSheet, fallbacks: phase1Fallbacks } = await phaseFetchData(upperTicker, keys, secEmail);
+    const {
+        financials,
+        sentiment,
+        risks,
+        catalysts,
+        newsHeadlines,
+        technicals,
+        candles,
+        insiderActivity,
+        earnings,
+        peers,
+        secFilings,
+        secCik,
+        analystConsensus,
+        priceTarget,
+        institutionalOwnership,
+        balanceSheet,
+        fallbacks: phase1Fallbacks,
+    } = await phaseFetchData(upperTicker, keys, secEmail);
 
     // ── Phase 2: Compute (ZERO API calls) ────────────────────
-    const { investmentScore, financialHealth, momentum, valueGrowth, riskReward, dividendAnalysis, valuationModels, earningsQualityScore, extendedTechnicals, aeonScore } = phaseCompute(financials, technicals, candles, sentiment, risks, insiderActivity, earnings, balanceSheet);
+    const {
+        investmentScore,
+        financialHealth,
+        momentum,
+        valueGrowth,
+        riskReward,
+        dividendAnalysis,
+        valuationModels,
+        earningsQualityScore,
+        extendedTechnicals,
+        aeonScore,
+    } = phaseCompute(financials, technicals, candles, sentiment, risks, insiderActivity, earnings, balanceSheet);
 
     // ── Phase 3: AI Synthesis (parallel Gemini calls) ────────
-    const { report, premiumInsights, fallbacks: phase3Fallbacks } = await phaseAISynth(financials, sentiment, risks, catalysts, keys, upperTicker);
+    const {
+        report,
+        premiumInsights,
+        fallbacks: phase3Fallbacks,
+    } = await phaseAISynth(financials, sentiment, risks, catalysts, keys, upperTicker);
 
     // ── Phase 4: Secondary AI opinions (parallel, non-fatal) ─
-    const { aiConsensus, audit, fallbacks: phase4Fallbacks } = await phaseSecondaryAI(financials, sentiment, risks, catalysts, report, keys);
+    const {
+        aiConsensus,
+        audit,
+        fallbacks: phase4Fallbacks,
+    } = await phaseSecondaryAI(financials, sentiment, risks, catalysts, report, keys);
 
     // Collect all fallbacks
     const allFallbacks = [...phase1Fallbacks, ...phase3Fallbacks, ...phase4Fallbacks];
@@ -281,10 +343,17 @@ async function phaseFetchData(upperTicker: string, keys: AnalysisKeys, secEmail?
 
     // Phase 1b: Parallel data collection (all independent)
     const [
-        sentimentResult, risksResult, technicalsResult,
-        insiderActivity, earnings, peers, secFilingsResult,
-        analystConsensus, priceTarget, institutionalOwnership,
-        balanceSheet
+        sentimentResult,
+        risksResult,
+        technicalsResult,
+        insiderActivity,
+        earnings,
+        peers,
+        secFilingsResult,
+        analystConsensus,
+        priceTarget,
+        institutionalOwnership,
+        balanceSheet,
     ] = await Promise.all([
         (async () => {
             try {
@@ -311,41 +380,76 @@ async function phaseFetchData(upperTicker: string, keys: AnalysisKeys, secEmail?
             } catch (err) {
                 logger.error('phase1', 'Technical indicators failed, using mock', err, { ticker: upperTicker });
                 fallbacks.push('Technical indicators');
-                return { ...getMockTechnicals(upperTicker), _candles: null as { closes: number[]; highs: number[]; lows: number[] } | null };
+                return {
+                    ...getMockTechnicals(upperTicker),
+                    _candles: null as { closes: number[]; highs: number[]; lows: number[] } | null,
+                };
             }
         })(),
         (async () => {
-            try { return await fetchInsiderTrades(upperTicker, keys.finnhub); }
-            catch (err) { logger.error('phase1', 'Insider trades failed, using mock', err); fallbacks.push('Insider trades'); return getMockInsiderActivity(upperTicker); }
+            try {
+                return await fetchInsiderTrades(upperTicker, keys.finnhub);
+            } catch (err) {
+                logger.error('phase1', 'Insider trades failed, using mock', err);
+                fallbacks.push('Insider trades');
+                return getMockInsiderActivity(upperTicker);
+            }
         })(),
         (async () => {
-            try { return await fetchEarningsSurprises(upperTicker, keys.finnhub); }
-            catch (err) { logger.error('phase1', 'Earnings failed, using mock', err); fallbacks.push('Earnings data'); return getMockEarnings(upperTicker); }
+            try {
+                return await fetchEarningsSurprises(upperTicker, keys.finnhub);
+            } catch (err) {
+                logger.error('phase1', 'Earnings failed, using mock', err);
+                fallbacks.push('Earnings data');
+                return getMockEarnings(upperTicker);
+            }
         })(),
         (async () => {
-            try { return await fetchPeers(upperTicker, keys.finnhub); }
-            catch (err) { logger.error('phase1', 'Peers failed, using mock', err); fallbacks.push('Peer comparison'); return getMockPeers(upperTicker); }
+            try {
+                return await fetchPeers(upperTicker, keys.finnhub);
+            } catch (err) {
+                logger.error('phase1', 'Peers failed, using mock', err);
+                fallbacks.push('Peer comparison');
+                return getMockPeers(upperTicker);
+            }
         })(),
         (async () => {
-            try { return await fetchSECFilings(upperTicker, secEmail); }
-            catch (err) { logger.error('phase1', 'SEC filings failed', err); fallbacks.push('SEC filings'); return { filings: getMockSECFilings(upperTicker), cik: null }; }
+            try {
+                return await fetchSECFilings(upperTicker, secEmail);
+            } catch (err) {
+                logger.error('phase1', 'SEC filings failed', err);
+                fallbacks.push('SEC filings');
+                return { filings: getMockSECFilings(upperTicker), cik: null };
+            }
         })(),
         (async () => {
-            try { return await fetchAnalystConsensus(upperTicker, keys.finnhub); }
-            catch { return null; }
+            try {
+                return await fetchAnalystConsensus(upperTicker, keys.finnhub);
+            } catch {
+                return null;
+            }
         })(),
         (async () => {
-            try { return await fetchPriceTargets(upperTicker, keys.finnhub, financials.price); }
-            catch { return null; }
+            try {
+                return await fetchPriceTargets(upperTicker, keys.finnhub, financials.price);
+            } catch {
+                return null;
+            }
         })(),
         (async () => {
-            try { return await fetchInstitutionalOwnership(upperTicker, keys.finnhub); }
-            catch { return null; }
+            try {
+                return await fetchInstitutionalOwnership(upperTicker, keys.finnhub);
+            } catch {
+                return null;
+            }
         })(),
         // Balance sheet data for real Altman Z-Score (non-fatal — falls back to estimates)
         (async (): Promise<BalanceSheetData | null> => {
-            try { return await fetchBalanceSheet(upperTicker, keys.finnhub); }
-            catch { return null; }
+            try {
+                return await fetchBalanceSheet(upperTicker, keys.finnhub);
+            } catch {
+                return null;
+            }
         })(),
     ]);
 
@@ -411,39 +515,84 @@ function phaseCompute(
 
     const aeonScore = computeAeonScore(investmentScore, financialHealth, technicals, sentiment, earnings);
 
-    return { investmentScore, financialHealth, momentum, valueGrowth, riskReward, dividendAnalysis, valuationModels, earningsQualityScore, extendedTechnicals, aeonScore };
+    return {
+        investmentScore,
+        financialHealth,
+        momentum,
+        valueGrowth,
+        riskReward,
+        dividendAnalysis,
+        valuationModels,
+        earningsQualityScore,
+        extendedTechnicals,
+        aeonScore,
+    };
 }
 
 /** Phase 3: AI Synthesis (parallel Gemini calls) */
-async function phaseAISynth(financials: FinancialData, sentiment: SentimentResult, risks: RiskFactor[], catalysts: Catalyst[], keys: AnalysisKeys, upperTicker: string) {
+async function phaseAISynth(
+    financials: FinancialData,
+    sentiment: SentimentResult,
+    risks: RiskFactor[],
+    catalysts: Catalyst[],
+    keys: AnalysisKeys,
+    upperTicker: string,
+) {
     const fallbacks: string[] = [];
     const [report, premiumInsights] = await Promise.all([
         (async () => {
-            try { return await synthesizeReport(financials, sentiment, risks, catalysts, keys.gemini); }
-            catch (err) { logger.error('phase3', 'Gemini synthesis failed, using mock', err); fallbacks.push('AI report (Gemini)'); return getMockReport(upperTicker); }
+            try {
+                return await synthesizeReport(financials, sentiment, risks, catalysts, keys.gemini);
+            } catch (err) {
+                logger.error('phase3', 'Gemini synthesis failed, using mock', err);
+                fallbacks.push('AI report (Gemini)');
+                return getMockReport(upperTicker);
+            }
         })(),
         (async () => {
-            try { return await generatePremiumInsights(financials, sentiment, risks, catalysts, keys.gemini); }
-            catch (err) { logger.error('phase3', 'Premium insights failed (non-fatal)', err, { ticker: upperTicker }); fallbacks.push('Premium insights (Gemini)'); return null; }
+            try {
+                return await generatePremiumInsights(financials, sentiment, risks, catalysts, keys.gemini);
+            } catch (err) {
+                logger.error('phase3', 'Premium insights failed (non-fatal)', err, { ticker: upperTicker });
+                fallbacks.push('Premium insights (Gemini)');
+                return null;
+            }
         })(),
     ]);
     return { report, premiumInsights, fallbacks };
 }
 
 /** Phase 4: Secondary AI opinions (parallel, non-fatal) */
-async function phaseSecondaryAI(financials: FinancialData, sentiment: SentimentResult, risks: RiskFactor[], catalysts: Catalyst[], report: string, keys: AnalysisKeys) {
+async function phaseSecondaryAI(
+    financials: FinancialData,
+    sentiment: SentimentResult,
+    risks: RiskFactor[],
+    catalysts: Catalyst[],
+    report: string,
+    keys: AnalysisKeys,
+) {
     const fallbacks: string[] = [];
     const [aiConsensus, audit] = await Promise.all([
         (async () => {
             if (keys.cerebras) {
-                try { return await generateSecondOpinion(financials, sentiment, risks, catalysts, report, keys.cerebras); }
-                catch (err) { logger.error('phase4', 'Cerebras consensus failed (non-fatal)', err); fallbacks.push('AI consensus (Cerebras)'); return null; }
+                try {
+                    return await generateSecondOpinion(financials, sentiment, risks, catalysts, report, keys.cerebras);
+                } catch (err) {
+                    logger.error('phase4', 'Cerebras consensus failed (non-fatal)', err);
+                    fallbacks.push('AI consensus (Cerebras)');
+                    return null;
+                }
             }
             return null;
         })(),
         (async () => {
-            try { return await auditReport(report, financials, keys.cohere); }
-            catch (err) { logger.error('phase4', 'Cohere audit failed (non-fatal)', err); fallbacks.push('Fact audit (Cohere)'); return null; }
+            try {
+                return await auditReport(report, financials, keys.cohere);
+            } catch (err) {
+                logger.error('phase4', 'Cohere audit failed (non-fatal)', err);
+                fallbacks.push('Fact audit (Cohere)');
+                return null;
+            }
         })(),
     ]);
     return { aiConsensus, audit, fallbacks };
@@ -455,9 +604,7 @@ function handleCORS(request: Request, env: Env, response: Response): Response {
     const allowed = (env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim());
 
     // Support wildcard subdomains: *.aeonnimbus.pages.dev
-    const isAllowed = allowed.includes(origin) ||
-        allowed.includes('*') ||
-        /^https:\/\/[a-z0-9-]+\.aeonnimbus\.pages\.dev$/.test(origin);
+    const isAllowed = allowed.includes(origin) || allowed.includes('*') || /^https:\/\/[a-z0-9-]+\.aeonnimbus\.pages\.dev$/.test(origin);
 
     const corsOrigin = isAllowed ? origin : allowed[0] || '*';
 

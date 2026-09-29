@@ -59,49 +59,51 @@ export default function Onboarding() {
     };
 
     return (
-        <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.92)',
-            backdropFilter: 'blur(8px)',
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px',
-        }}>
-            <div className="card-premium animate-fade-in" style={{
-                borderRadius: '16px',
-                padding: '48px',
-                maxWidth: '560px',
-                width: '100%',
-                textAlign: 'center',
-            }}>
-                <div style={{ fontSize: '64px', marginBottom: '24px' }}>
-                    {currentStep.icon}
-                </div>
+        <div
+            style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'rgba(0, 0, 0, 0.92)',
+                backdropFilter: 'blur(8px)',
+                zIndex: 9999,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '20px',
+            }}
+        >
+            <div
+                className="card-premium animate-fade-in"
+                style={{
+                    borderRadius: '16px',
+                    padding: '48px',
+                    maxWidth: '560px',
+                    width: '100%',
+                    textAlign: 'center',
+                }}
+            >
+                <div style={{ fontSize: '64px', marginBottom: '24px' }}>{currentStep.icon}</div>
 
-                <h2 className="text-2xl font-bold mb-4 text-accent">
-                    {currentStep.title}
-                </h2>
+                <h2 className="text-2xl font-bold mb-4 text-accent">{currentStep.title}</h2>
 
-                <p className="text-base leading-relaxed mb-8 text-ink2">
-                    {currentStep.description}
-                </p>
+                <p className="text-base leading-relaxed mb-8 text-ink2">{currentStep.description}</p>
 
                 {/* Progress dots */}
                 <div className="flex justify-center gap-2 mb-8">
                     {STEPS.map((_, idx) => (
-                        <div key={idx} style={{
-                            width: '8px',
-                            height: '8px',
-                            borderRadius: '50%',
-                            background: idx === step ? 'var(--gold)' : 'var(--rule2)',
-                            transition: 'background 0.2s',
-                        }} />
+                        <div
+                            key={idx}
+                            style={{
+                                width: '8px',
+                                height: '8px',
+                                borderRadius: '50%',
+                                background: idx === step ? 'var(--gold)' : 'var(--rule2)',
+                                transition: 'background 0.2s',
+                            }}
+                        />
                     ))}
                 </div>
 

@@ -3,6 +3,7 @@
  */
 import { useState, useEffect } from 'react';
 import { ErrorNote } from './Terminal';
+import { ANALYTICS_URL } from '../config';
 
 interface Watchlist {
     id: number;
@@ -32,7 +33,7 @@ export default function WatchlistManager() {
 
     const loadWatchlists = async () => {
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/watchlists?user_id=1');
+            const res = await fetch(`${ANALYTICS_URL}/api/watchlists?user_id=1`);
             const data = await res.json();
             setWatchlists(data.watchlists);
             setErr('');
@@ -42,11 +43,14 @@ export default function WatchlistManager() {
     };
 
     const createWatchlist = async () => {
-        const tickerList = tickers.split(',').map(t => t.trim().toUpperCase()).filter(Boolean);
+        const tickerList = tickers
+            .split(',')
+            .map((t) => t.trim().toUpperCase())
+            .filter(Boolean);
         if (!name || tickerList.length === 0) return;
 
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/watchlists', {
+            const res = await fetch(`${ANALYTICS_URL}/api/watchlists`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name, tickers: tickerList, user_id: 1 }),
@@ -65,7 +69,7 @@ export default function WatchlistManager() {
         setAnalyzing(id);
         setBulkResults([]);
         try {
-            const res = await fetch(`http://127.0.0.1:8000/api/watchlists/${id}/analyze`, { method: 'POST' });
+            const res = await fetch(`${ANALYTICS_URL}/api/watchlists/${id}/analyze`, { method: 'POST' });
             if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || res.statusText);
             const data = await res.json();
             setBulkResults(data.results);
@@ -81,17 +85,12 @@ export default function WatchlistManager() {
             <div className="card p-5">
                 <h2 className="section-heading mb-4">Watchlists</h2>
                 <div className="space-y-3">
-                    <input
-                        className="input-field"
-                        placeholder="Watchlist name"
-                        value={name}
-                        onChange={e => setName(e.target.value)}
-                    />
+                    <input className="input-field" placeholder="Watchlist name" value={name} onChange={(e) => setName(e.target.value)} />
                     <textarea
                         className="input-field"
                         placeholder="Tickers (comma-separated): AAPL, MSFT, GOOGL"
                         value={tickers}
-                        onChange={e => setTickers(e.target.value)}
+                        onChange={(e) => setTickers(e.target.value)}
                         rows={3}
                     />
                     <button className="btn-primary" onClick={createWatchlist}>
@@ -101,34 +100,33 @@ export default function WatchlistManager() {
                 {err && <ErrorNote msg={err} />}
             </div>
 
-            {watchlists.map(wl => (
+            {watchlists.map((wl) => (
                 <div key={wl.id} className="card">
                     <div className="p-4 border-b border-white/[0.06]">
                         <div className="flex items-center justify-between mb-2">
                             <h3 className="font-bold text-gold">{wl.name}</h3>
-                            <button
-                                className="btn-primary text-sm"
-                                onClick={() => analyzeWatchlist(wl.id)}
-                                disabled={analyzing === wl.id}
-                            >
+                            <button className="btn-primary text-sm" onClick={() => analyzeWatchlist(wl.id)} disabled={analyzing === wl.id}>
                                 {analyzing === wl.id ? 'Analyzing...' : 'Analyze All'}
                             </button>
                         </div>
                         <div className="flex gap-2 flex-wrap">
-                            {wl.tickers.map(t => (
-                                <span key={t} className="badge-accent text-xs">{t}</span>
+                            {wl.tickers.map((t) => (
+                                <span key={t} className="badge-accent text-xs">
+                                    {t}
+                                </span>
                             ))}
                         </div>
                     </div>
                     {analyzing === wl.id && bulkResults.length > 0 && (
                         <div className="p-4">
                             <div className="space-y-2">
-                                {bulkResults.map(r => (
+                                {bulkResults.map((r) => (
                                     <div key={r.ticker} className="flex items-center justify-between text-sm">
                                         <span className="font-mono">{r.ticker}</span>
                                         {r.status === 'success' ? (
                                             <span className="text-emerald">
-                                                ${r.data?.price} ({r.data?.changePercent > 0 ? '+' : ''}{r.data?.changePercent?.toFixed(2)}%)
+                                                ${r.data?.price} ({r.data?.changePercent > 0 ? '+' : ''}
+                                                {r.data?.changePercent?.toFixed(2)}%)
                                             </span>
                                         ) : (
                                             <span className="text-rose">Error</span>

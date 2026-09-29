@@ -10,6 +10,7 @@
 import { useState, useEffect } from 'react';
 import { ErrorNote } from './Terminal';
 import { SectionCard } from './report/shared';
+import { ANALYTICS_URL } from '../config';
 
 interface Event {
     id: number;
@@ -46,7 +47,7 @@ export default function RumorNewsTiming() {
 
     const loadEvents = async () => {
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/market-events');
+            const res = await fetch(`${ANALYTICS_URL}/api/market-events`);
             if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || res.statusText);
             const data = await res.json();
             setEvents(data.events?.length ? data.events : getSampleEvents());
@@ -58,9 +59,9 @@ export default function RumorNewsTiming() {
     };
 
     const addEvent = async () => {
-        const assets = newEvent.affected_assets.split(',').map(a => a.trim().toUpperCase());
+        const assets = newEvent.affected_assets.split(',').map((a) => a.trim().toUpperCase());
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/market-events', {
+            const res = await fetch(`${ANALYTICS_URL}/api/market-events`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -95,12 +96,13 @@ export default function RumorNewsTiming() {
     const getPhaseInfo = (days: number) => {
         if (days > 20) return { phase: 'Quiet Accumulation', desc: 'Ideal time to look for the rumor', progress: ((days - 20) / 10) * 100 };
         if (days > 9) return { phase: 'Quiet Accumulation', desc: 'Early entry window', progress: ((20 - days) / 11) * 100 };
-        if (days > 2) return { phase: 'Mass Euphoria', desc: 'Media coverage builds, retail enters late', progress: ((9 - days) / 7) * 100 };
+        if (days > 2)
+            return { phase: 'Mass Euphoria', desc: 'Media coverage builds, retail enters late', progress: ((9 - days) / 7) * 100 };
         return { phase: 'Danger Window', desc: 'CRITICAL ZONE — sell the news', progress: ((3 - days) / 4) * 100 };
     };
 
     const filteredEvents = filter
-        ? events.filter(e => e.affected_assets.some(a => a.toLowerCase().includes(filter.toLowerCase())))
+        ? events.filter((e) => e.affected_assets.some((a) => a.toLowerCase().includes(filter.toLowerCase())))
         : events;
 
     const categoryIcons = { macro: '📊', earnings: '💼', geopolitical: '🌍', general: '📰' };
@@ -132,9 +134,13 @@ export default function RumorNewsTiming() {
                             className="input-field"
                             placeholder="Event title"
                             value={newEvent.title}
-                            onChange={e => setNewEvent({ ...newEvent, title: e.target.value })}
+                            onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
                         />
-                        <select className="input-field" value={newEvent.category} onChange={e => setNewEvent({ ...newEvent, category: e.target.value as any })}>
+                        <select
+                            className="input-field"
+                            value={newEvent.category}
+                            onChange={(e) => setNewEvent({ ...newEvent, category: e.target.value as any })}
+                        >
                             <option value="macro">Macro</option>
                             <option value="earnings">Earnings</option>
                             <option value="geopolitical">Geopolitical</option>
@@ -144,16 +150,18 @@ export default function RumorNewsTiming() {
                             className="input-field"
                             type="date"
                             value={newEvent.event_date}
-                            onChange={e => setNewEvent({ ...newEvent, event_date: e.target.value })}
+                            onChange={(e) => setNewEvent({ ...newEvent, event_date: e.target.value })}
                         />
                         <input
                             className="input-field"
                             placeholder="Affected assets (comma-separated)"
                             value={newEvent.affected_assets}
-                            onChange={e => setNewEvent({ ...newEvent, affected_assets: e.target.value })}
+                            onChange={(e) => setNewEvent({ ...newEvent, affected_assets: e.target.value })}
                         />
                     </div>
-                    <button className="btn-primary mt-3" onClick={addEvent}>Save Event</button>
+                    <button className="btn-primary mt-3" onClick={addEvent}>
+                        Save Event
+                    </button>
                 </SectionCard>
             )}
 
@@ -163,13 +171,13 @@ export default function RumorNewsTiming() {
                     className="input-field"
                     placeholder="Filter by asset (e.g. Oil, Nasdaq, BTC)"
                     value={filter}
-                    onChange={e => setFilter(e.target.value)}
+                    onChange={(e) => setFilter(e.target.value)}
                 />
             </div>
 
             {/* Events Matrix */}
             <div className="space-y-3">
-                {filteredEvents.map(event => {
+                {filteredEvents.map((event) => {
                     const days = getDaysRemaining(event.event_date);
                     const phaseInfo = getPhaseInfo(days);
                     const urgencyColor = getUrgencyColor(days);
@@ -190,14 +198,16 @@ export default function RumorNewsTiming() {
                                                 {event.title}
                                             </h3>
                                             <div className="flex gap-2 mt-1 items-center flex-wrap">
-                                                {event.affected_assets.map(asset => (
-                                                    <span key={asset} className="badge-accent text-xs">{asset}</span>
+                                                {event.affected_assets.map((asset) => (
+                                                    <span key={asset} className="badge-accent text-xs">
+                                                        {asset}
+                                                    </span>
                                                 ))}
                                                 <a
                                                     href={`http://localhost:5175/?ticker=${encodeURIComponent(event.affected_assets[0] || '')}`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    onClick={e => e.stopPropagation()}
+                                                    onClick={(e) => e.stopPropagation()}
                                                     className="text-xs"
                                                     style={{ color: 'var(--gold)', opacity: 0.75 }}
                                                     title="Opens Aeon Intelligence's own event view for this ticker — separate demo data, not shared with this app"
@@ -208,7 +218,7 @@ export default function RumorNewsTiming() {
                                                     href="http://localhost:5174"
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    onClick={e => e.stopPropagation()}
+                                                    onClick={(e) => e.stopPropagation()}
                                                     className="text-xs"
                                                     style={{ color: 'var(--gold)', opacity: 0.75 }}
                                                     title="Opens Aeon Platform's Data Studio — a separate app, not ticker-linked (it lives outside this codebase)"
@@ -216,7 +226,10 @@ export default function RumorNewsTiming() {
                                                     View in Aeon Platform ↗
                                                 </a>
                                                 {event.source === 'demo' && (
-                                                    <span className="badge-gold text-xs" title="Placeholder sample event, not live market data">
+                                                    <span
+                                                        className="badge-gold text-xs"
+                                                        title="Placeholder sample event, not live market data"
+                                                    >
                                                         DEMO DATA
                                                     </span>
                                                 )}
@@ -226,7 +239,10 @@ export default function RumorNewsTiming() {
                                 </div>
 
                                 {/* Days Countdown */}
-                                <div className="text-center px-4 py-2 rounded-lg" style={{ background: `${urgencyColor}22`, border: `2px solid ${urgencyColor}` }}>
+                                <div
+                                    className="text-center px-4 py-2 rounded-lg"
+                                    style={{ background: `${urgencyColor}22`, border: `2px solid ${urgencyColor}` }}
+                                >
                                     <div className="text-3xl font-bold" style={{ color: urgencyColor }}>
                                         D-{days}
                                     </div>
@@ -250,15 +266,24 @@ export default function RumorNewsTiming() {
 
                             {/* Phase Stages */}
                             <div className="grid grid-cols-3 gap-2 mt-3 text-xs">
-                                <div className="p-2 rounded text-center" style={{ background: days > 9 ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.05)' }}>
+                                <div
+                                    className="p-2 rounded text-center"
+                                    style={{ background: days > 9 ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.05)' }}
+                                >
                                     <div className="font-semibold">Accumulation</div>
                                     <div className="opacity-60">D-20 to D-10</div>
                                 </div>
-                                <div className="p-2 rounded text-center" style={{ background: days > 2 && days <= 9 ? 'rgba(245,158,11,0.2)' : 'rgba(255,255,255,0.05)' }}>
+                                <div
+                                    className="p-2 rounded text-center"
+                                    style={{ background: days > 2 && days <= 9 ? 'rgba(245,158,11,0.2)' : 'rgba(255,255,255,0.05)' }}
+                                >
                                     <div className="font-semibold">Euphoria</div>
                                     <div className="opacity-60">D-9 to D-2</div>
                                 </div>
-                                <div className="p-2 rounded text-center" style={{ background: days <= 2 ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.05)' }}>
+                                <div
+                                    className="p-2 rounded text-center"
+                                    style={{ background: days <= 2 ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.05)' }}
+                                >
                                     <div className="font-semibold">Danger</div>
                                     <div className="opacity-60">D-1 to D-0</div>
                                 </div>
@@ -270,13 +295,19 @@ export default function RumorNewsTiming() {
 
             {/* Scenario Simulator Modal */}
             {selectedEvent && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.85)' }} onClick={() => setSelectedEvent(null)}>
-                    <div className="card p-6 max-w-2xl w-full" onClick={e => e.stopPropagation()}>
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    style={{ background: 'rgba(0,0,0,0.85)' }}
+                    onClick={() => setSelectedEvent(null)}
+                >
+                    <div className="card p-6 max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-between items-start mb-4">
                             <h2 className="text-2xl font-bold" style={{ color: 'var(--gold)' }}>
                                 Scenario Simulator
                             </h2>
-                            <button onClick={() => setSelectedEvent(null)} className="text-2xl">✕</button>
+                            <button onClick={() => setSelectedEvent(null)} className="text-2xl">
+                                ✕
+                            </button>
                         </div>
 
                         <div className="space-y-4">
@@ -301,8 +332,13 @@ export default function RumorNewsTiming() {
                                 </div>
                             </div>
 
-                            <div className="p-4 rounded-lg" style={{ background: 'rgba(184,134,11,0.1)', border: '1px solid rgba(184,134,11,0.3)' }}>
-                                <div className="font-semibold mb-2" style={{ color: 'var(--gold)' }}>Decision matrix</div>
+                            <div
+                                className="p-4 rounded-lg"
+                                style={{ background: 'rgba(184,134,11,0.1)', border: '1px solid rgba(184,134,11,0.3)' }}
+                            >
+                                <div className="font-semibold mb-2" style={{ color: 'var(--gold)' }}>
+                                    Decision matrix
+                                </div>
                                 <div className="text-sm space-y-1" style={{ color: 'var(--ink2)' }}>
                                     <div>✓ Enter during the accumulation phase (D-20 to D-10)</div>
                                     <div>✓ Monitor institutional flow</div>

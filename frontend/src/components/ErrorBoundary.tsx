@@ -5,10 +5,7 @@ interface ErrorBoundaryState {
     error: Error | null;
 }
 
-export default class ErrorBoundary extends React.Component<
-    { children: React.ReactNode; fallback?: React.ReactNode },
-    ErrorBoundaryState
-> {
+export default class ErrorBoundary extends React.Component<{ children: React.ReactNode; fallback?: React.ReactNode }, ErrorBoundaryState> {
     constructor(props: { children: React.ReactNode; fallback?: React.ReactNode }) {
         super(props);
         this.state = { hasError: false, error: null };
@@ -30,9 +27,7 @@ export default class ErrorBoundary extends React.Component<
                 <div className="mx-auto max-w-lg p-8 text-center animate-fade-in">
                     <div className="card-premium p-8">
                         <div className="text-5xl mb-4">⚠️</div>
-                        <h2 className="font-display text-xl font-bold text-white mb-2">
-                            Something went wrong
-                        </h2>
+                        <h2 className="font-display text-xl font-bold text-white mb-2">Something went wrong</h2>
                         <p className="text-sm text-white/50 mb-4 leading-relaxed">
                             {this.state.error?.message || 'An unexpected error occurred while rendering the report.'}
                         </p>

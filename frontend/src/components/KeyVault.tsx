@@ -1,12 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useStore } from '../store';
-import {
-    encryptKeys,
-    decryptKeys,
-    hasStoredKeys,
-    clearStoredKeys,
-    type APIKeys,
-} from '../utils/crypto';
+import { encryptKeys, decryptKeys, hasStoredKeys, clearStoredKeys, type APIKeys } from '../utils/crypto';
+import { ANALYTICS_URL } from '../config';
 
 const KEY_PROVIDERS = [
     {
@@ -88,7 +83,7 @@ const KEY_PROVIDERS = [
  * .env) so the whole terminal feels like one product instead of five. */
 async function syncKeysToEngines(keys: APIKeys) {
     try {
-        await fetch('http://127.0.0.1:8000/system/sync-keys', {
+        await fetch(`${ANALYTICS_URL}/system/sync-keys`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -207,7 +202,7 @@ export default function KeyVault() {
     };
 
     const toggleShowKey = (id: string) => {
-        setShowKeys(prev => ({ ...prev, [id]: !prev[id] }));
+        setShowKeys((prev) => ({ ...prev, [id]: !prev[id] }));
     };
 
     const maskKey = (key: string) => {
@@ -220,34 +215,29 @@ export default function KeyVault() {
         <div className="mx-auto max-w-2xl animate-fade-in">
             {/* Header */}
             <div className="mb-8 text-center">
-                <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-accent/10 text-3xl">
-                    🔐
-                </div>
+                <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-accent/10 text-3xl">🔐</div>
                 <h2 className="mb-2 font-display text-2xl font-bold text-white">Key Vault</h2>
-                <p className="text-sm text-white/40">
-                    Your API keys are encrypted with AES-256-GCM and never leave your browser.
-                </p>
+                <p className="text-sm text-white/40">Your API keys are encrypted with AES-256-GCM and never leave your browser.</p>
             </div>
 
             {/* Step: Choose Mode */}
             {step === 'choose' && (
                 <div className="space-y-4 animate-slide-up">
-                    <button
-                        onClick={handleDemoMode}
-                        className="card group w-full cursor-pointer p-6 text-left"
-                        id="demo-mode-btn"
-                    >
+                    <button onClick={handleDemoMode} className="card group w-full cursor-pointer p-6 text-left" id="demo-mode-btn">
                         <div className="flex items-center gap-4">
                             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/10 text-xl transition-transform group-hover:scale-110">
                                 🎮
                             </div>
                             <div className="flex-1">
                                 <h3 className="mb-1 font-semibold text-white">Try Demo Mode</h3>
-                                <p className="text-sm text-white/40">
-                                    Explore with realistic mock data — no API keys needed
-                                </p>
+                                <p className="text-sm text-white/40">Explore with realistic mock data — no API keys needed</p>
                             </div>
-                            <svg className="h-5 w-5 text-white/30 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg
+                                className="h-5 w-5 text-white/30 transition-transform group-hover:translate-x-1"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                             </svg>
                         </div>
@@ -255,7 +245,9 @@ export default function KeyVault() {
 
                     {import.meta.env.VITE_DEMO_ONLY === 'true' ? (
                         <div className="card p-5 text-center space-y-2 border border-accent/20">
-                            <p className="text-sm text-white/60">This hosted instance is <span className="text-accent font-semibold">demo-only</span>.</p>
+                            <p className="text-sm text-white/60">
+                                This hosted instance is <span className="text-accent font-semibold">demo-only</span>.
+                            </p>
                             <p className="text-xs text-white/40">For live data with your own free API keys,</p>
                             <a
                                 href="https://github.com/myProjectsRavi/AeonNimbus-AI"
@@ -278,22 +270,21 @@ export default function KeyVault() {
                                 </div>
                                 <div className="flex-1">
                                     <h3 className="mb-1 font-semibold text-white">Enter API Keys</h3>
-                                    <p className="text-sm text-white/40">
-                                        Connect your own free-tier API keys for live analysis
-                                    </p>
+                                    <p className="text-sm text-white/40">Connect your own free-tier API keys for live analysis</p>
                                 </div>
-                                <svg className="h-5 w-5 text-white/30 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg
+                                    className="h-5 w-5 text-white/30 transition-transform group-hover:translate-x-1"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                 </svg>
                             </div>
                         </button>
                     )}
 
-                    {demoMode && (
-                        <p className="text-center text-xs text-accent/60">
-                            Currently in demo mode
-                        </p>
-                    )}
+                    {demoMode && <p className="text-center text-xs text-accent/60">Currently in demo mode</p>}
                 </div>
             )}
 
@@ -307,7 +298,9 @@ export default function KeyVault() {
                                     <span className="text-lg">{provider.icon}</span>
                                     <span className="font-semibold text-white">{provider.name}</span>
                                     <span className="text-[11px] text-white/40">— {provider.description}</span>
-                                    {!provider.required && <span className="text-[9px] text-accent/60 bg-accent/10 px-1.5 py-0.5 rounded">optional</span>}
+                                    {!provider.required && (
+                                        <span className="text-[9px] text-accent/60 bg-accent/10 px-1.5 py-0.5 rounded">optional</span>
+                                    )}
                                 </div>
                                 <a
                                     href={provider.url}
@@ -323,9 +316,7 @@ export default function KeyVault() {
                                 className="input-field font-mono text-sm"
                                 placeholder={provider.placeholder}
                                 value={keys[provider.id] || ''}
-                                onChange={(e) =>
-                                    setLocalKeys((prev) => ({ ...prev, [provider.id]: e.target.value }))
-                                }
+                                onChange={(e) => setLocalKeys((prev) => ({ ...prev, [provider.id]: e.target.value }))}
                             />
                         </div>
                     ))}
@@ -354,7 +345,8 @@ export default function KeyVault() {
                             <h3 className="font-display font-semibold text-white">Set Encryption Passphrase</h3>
                         </div>
                         <p className="mb-4 text-sm text-white/40">
-                            This passphrase encrypts your keys with AES-256-GCM. We never store it — if you forget it, you'll need to re-enter your keys.
+                            This passphrase encrypts your keys with AES-256-GCM. We never store it — if you forget it, you'll need to
+                            re-enter your keys.
                         </p>
                         <div className="space-y-3">
                             <input
@@ -362,19 +354,23 @@ export default function KeyVault() {
                                 className="input-field"
                                 placeholder="Enter passphrase (min 6 characters)"
                                 value={passphrase}
-                                onChange={(e) => { setPassphrase(e.target.value); setError(''); }}
+                                onChange={(e) => {
+                                    setPassphrase(e.target.value);
+                                    setError('');
+                                }}
                             />
                             <input
                                 type="password"
                                 className="input-field"
                                 placeholder="Confirm passphrase"
                                 value={confirmPassphrase}
-                                onChange={(e) => { setConfirmPassphrase(e.target.value); setError(''); }}
+                                onChange={(e) => {
+                                    setConfirmPassphrase(e.target.value);
+                                    setError('');
+                                }}
                             />
                         </div>
-                        {error && (
-                            <p className="mt-3 text-sm text-rose">{error}</p>
-                        )}
+                        {error && <p className="mt-3 text-sm text-rose">{error}</p>}
                     </div>
 
                     <div className="flex gap-3">
@@ -404,12 +400,13 @@ export default function KeyVault() {
                             className="input-field"
                             placeholder="Enter your passphrase"
                             value={passphrase}
-                            onChange={(e) => { setPassphrase(e.target.value); setError(''); }}
+                            onChange={(e) => {
+                                setPassphrase(e.target.value);
+                                setError('');
+                            }}
                             onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
                         />
-                        {error && (
-                            <p className="mt-3 text-sm text-rose">{error}</p>
-                        )}
+                        {error && <p className="mt-3 text-sm text-rose">{error}</p>}
                     </div>
 
                     <div className="flex gap-3">
@@ -450,9 +447,7 @@ export default function KeyVault() {
                     <div className="mb-4 flex items-center justify-between">
                         <h3 className="font-display font-semibold text-white text-lg">Your API Keys</h3>
                         <div className="flex items-center gap-2">
-                            {copySuccess === 'keys-saved' && (
-                                <span className="badge-success text-[10px] animate-fade-in">✓ Saved</span>
-                            )}
+                            {copySuccess === 'keys-saved' && <span className="badge-success text-[10px] animate-fade-in">✓ Saved</span>}
                         </div>
                     </div>
 
@@ -497,9 +492,7 @@ export default function KeyVault() {
                                         type="text"
                                         className="input-field font-mono text-sm"
                                         value={keyValue}
-                                        onChange={(e) =>
-                                            setLocalKeys((prev) => ({ ...prev, [provider.id]: e.target.value }))
-                                        }
+                                        onChange={(e) => setLocalKeys((prev) => ({ ...prev, [provider.id]: e.target.value }))}
                                         placeholder={provider.placeholder}
                                     />
                                 ) : (
@@ -511,9 +504,7 @@ export default function KeyVault() {
                         );
                     })}
 
-                    {error && (
-                        <p className="text-sm text-rose text-center">{error}</p>
-                    )}
+                    {error && <p className="text-sm text-rose text-center">{error}</p>}
 
                     <div className="flex gap-3 pt-2">
                         <button onClick={handleUpdateKeys} className="btn-secondary flex-1">

@@ -12,27 +12,42 @@ import { useStore } from '../store';
 import { jget, jpost } from '../utils/api';
 import { ErrorNote, VaultKeyStatus, SourceBadge } from './Terminal';
 import { SectionCard } from './report/shared';
+import { ANALYTICS_URL } from '../config';
 
-const AEON = 'http://127.0.0.1:8000';
+const AEON = ANALYTICS_URL;
 
 type DcfResp = {
-    price: number; wacc: number; terminalGrowth: number; methodology: string;
+    price: number;
+    wacc: number;
+    terminalGrowth: number;
+    methodology: string;
     scenarios: Record<'bear' | 'base' | 'bull', { growth: number; fairValue: number; upside: number }>;
 };
 type Ensemble = {
-    price: number; consensus: number; consensusUpside: number;
-    disagreementIndex: number; readout: string;
+    price: number;
+    consensus: number;
+    consensusUpside: number;
+    disagreementIndex: number;
+    readout: string;
     models: Record<string, { value: number; philosophy: string; upside: number }>;
 };
 type Personas = { mode: string; analyses: { persona: string; text: string }[] };
-type Gate = { ticker: string; file: string; entry?: string; target?: string; stop?: string; size?: string; kill?: string; };
+type Gate = { ticker: string; file: string; entry?: string; target?: string; stop?: string; size?: string; kill?: string };
 type CouncilJob = {
-    status: 'running' | 'done' | 'error'; verdict?: string; chairRuling?: string;
-    agreement?: number; tally?: Record<string, number>; error?: string;
+    status: 'running' | 'done' | 'error';
+    verdict?: string;
+    chairRuling?: string;
+    agreement?: number;
+    tally?: Record<string, number>;
+    error?: string;
 };
 
 const PERSONA_LABEL: Record<string, string> = {
-    buffett: '🏛️ Buffett', graham: '📚 Graham', lynch: '🛒 Lynch', munger: '🧠 Munger', marks: '🌊 Marks',
+    buffett: '🏛️ Buffett',
+    graham: '📚 Graham',
+    lynch: '🛒 Lynch',
+    munger: '🧠 Munger',
+    marks: '🌊 Marks',
 };
 const VOTE_CLS: Record<string, string> = { BUY: 'text-emerald', HOLD: 'text-gold-light', SELL: 'text-rose' };
 
@@ -51,20 +66,32 @@ export default function AlphaDigest() {
     const [council, setCouncil] = useState<CouncilJob | null>(null);
 
     useEffect(() => {
-        setDcf(null); setDcfErr('');
-        jget<DcfResp>(`${AEON}/quant/dcf/${ticker}`).then(setDcf).catch((e) => setDcfErr(String(e)));
+        setDcf(null);
+        setDcfErr('');
+        jget<DcfResp>(`${AEON}/quant/dcf/${ticker}`)
+            .then(setDcf)
+            .catch((e) => setDcfErr(String(e)));
 
-        setEns(null); setEnsErr('');
-        jget<Ensemble>(`${AEON}/fusion/valuation/${ticker}`).then(setEns).catch((e) => setEnsErr(String(e)));
+        setEns(null);
+        setEnsErr('');
+        jget<Ensemble>(`${AEON}/fusion/valuation/${ticker}`)
+            .then(setEns)
+            .catch((e) => setEnsErr(String(e)));
 
-        setPersonas(null); setPersonasErr('');
+        setPersonas(null);
+        setPersonasErr('');
         jpost<Personas>(`${AEON}/agents/personas`, { ticker, personas: ['buffett', 'graham', 'lynch'], geminiKey: null })
-            .then(setPersonas).catch((e) => setPersonasErr(String(e)));
+            .then(setPersonas)
+            .catch((e) => setPersonasErr(String(e)));
 
-        setGate(undefined); setGateErr('');
+        setGate(undefined);
+        setGateErr('');
         jget<{ gates: Gate[] }>(`${AEON}/houston/gates`)
             .then((d) => setGate(d.gates.find((g) => g.ticker === ticker) ?? null))
-            .catch((e) => { setGateErr(String(e)); setGate(null); });
+            .catch((e) => {
+                setGateErr(String(e));
+                setGate(null);
+            });
     }, [ticker]);
 
     // Council is a multi-minute LLM job (Fusion tab) — the digest shows a
@@ -79,8 +106,12 @@ export default function AlphaDigest() {
         try {
             const { jobId, ticker: jobTicker } = JSON.parse(raw);
             if (!jobId || jobTicker !== ticker) return;
-            jget<CouncilJob>(`${AEON}/fusion/council/${jobId}`).then(setCouncil).catch(() => {});
-        } catch { /* malformed cache entry — nothing to show */ }
+            jget<CouncilJob>(`${AEON}/fusion/council/${jobId}`)
+                .then(setCouncil)
+                .catch(() => {});
+        } catch {
+            /* malformed cache entry — nothing to show */
+        }
     }, [ticker]);
 
     return (
@@ -88,9 +119,8 @@ export default function AlphaDigest() {
             <div>
                 <h2 className="section-heading">Alpha Digest · {ticker}</h2>
                 <p className="mt-1 text-xs text-white/40">
-                    Every already-real signal in Aeon Analysis for one ticker, side by side — not a new
-                    model, just synthesis. Each card names its own methodology; nothing here is blended
-                    into a single number.
+                    Every already-real signal in Aeon Analysis for one ticker, side by side — not a new model, just synthesis. Each card
+                    names its own methodology; nothing here is blended into a single number.
                 </p>
             </div>
 
@@ -100,14 +130,17 @@ export default function AlphaDigest() {
                 {ens && (
                     <>
                         <p className="mb-3 text-sm text-white/80">
-                            Consensus <span className="font-mono font-bold text-accent">${ens.consensus}</span>
-                            {' '}({ens.consensusUpside > 0 ? '+' : ''}{ens.consensusUpside}% vs ${ens.price}) ·{' '}
+                            Consensus <span className="font-mono font-bold text-accent">${ens.consensus}</span> (
+                            {ens.consensusUpside > 0 ? '+' : ''}
+                            {ens.consensusUpside}% vs ${ens.price}) ·{' '}
                             <span className="font-mono">{ens.disagreementIndex}% disagreement</span> — {ens.readout}
                         </p>
                         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                             {Object.entries(ens.models).map(([k, m]) => (
                                 <div key={k} className="card-glass p-3">
-                                    <p className="text-sm font-semibold text-white/80">{k} — ${m.value}</p>
+                                    <p className="text-sm font-semibold text-white/80">
+                                        {k} — ${m.value}
+                                    </p>
                                     <p className="text-[10px] text-white/40">{m.philosophy}</p>
                                 </div>
                             ))}
@@ -129,12 +162,15 @@ export default function AlphaDigest() {
                                     <p className="stat-label mb-1 capitalize">{s}</p>
                                     <p className="font-mono text-sm font-bold text-white/85">${dcf.scenarios[s].fairValue}</p>
                                     <p className={`text-xs ${dcf.scenarios[s].upside >= 0 ? 'text-emerald' : 'text-rose'}`}>
-                                        {dcf.scenarios[s].upside > 0 ? '+' : ''}{dcf.scenarios[s].upside}% · growth {(dcf.scenarios[s].growth * 100).toFixed(1)}%
+                                        {dcf.scenarios[s].upside > 0 ? '+' : ''}
+                                        {dcf.scenarios[s].upside}% · growth {(dcf.scenarios[s].growth * 100).toFixed(1)}%
                                     </p>
                                 </div>
                             ))}
                         </div>
-                        <p className="mt-3 text-[10px] text-white/30">WACC {(dcf.wacc * 100).toFixed(1)}% · terminal growth {(dcf.terminalGrowth * 100).toFixed(1)}%</p>
+                        <p className="mt-3 text-[10px] text-white/30">
+                            WACC {(dcf.wacc * 100).toFixed(1)}% · terminal growth {(dcf.terminalGrowth * 100).toFixed(1)}%
+                        </p>
                     </>
                 )}
             </SectionCard>
@@ -147,7 +183,9 @@ export default function AlphaDigest() {
                 {personasErr && <ErrorNote msg={personasErr} />}
                 {personas && (
                     <div className="grid gap-3 sm:grid-cols-2">
-                        {personas.mode === 'demo' && <span className="badge-gold sm:col-span-2">Quick take (free) — live AI available in the Personas tab</span>}
+                        {personas.mode === 'demo' && (
+                            <span className="badge-gold sm:col-span-2">Quick take (free) — live AI available in the Personas tab</span>
+                        )}
                         {personas.analyses.map((a) => (
                             <div key={a.persona} className="card-premium p-4">
                                 <p className="stat-label mb-1">{PERSONA_LABEL[a.persona] ?? a.persona}</p>
@@ -164,7 +202,9 @@ export default function AlphaDigest() {
                 {gate === null && (
                     <p className="text-sm text-white/50">
                         No thesis gate on file for {ticker}. Write one in{' '}
-                        <button className="text-accent underline" onClick={() => setActiveTab('houston')}>Houston</button>{' '}
+                        <button className="text-accent underline" onClick={() => setActiveTab('houston')}>
+                            Houston
+                        </button>{' '}
                         before sizing a position.
                     </p>
                 )}
@@ -176,7 +216,12 @@ export default function AlphaDigest() {
                             {gate.stop && <span className="text-rose">Stop {gate.stop}</span>}
                             {gate.size && <span className="text-white/50">| {gate.size}</span>}
                         </div>
-                        {gate.kill && <p className="text-xs leading-relaxed text-gold-light"><b>Kill: </b>{gate.kill}</p>}
+                        {gate.kill && (
+                            <p className="text-xs leading-relaxed text-gold-light">
+                                <b>Kill: </b>
+                                {gate.kill}
+                            </p>
+                        )}
                     </div>
                 )}
             </SectionCard>
@@ -185,17 +230,25 @@ export default function AlphaDigest() {
             <SectionCard title="Council of Agents" icon="⚖️">
                 {!council && (
                     <div className="flex items-center gap-3">
-                        <p className="text-sm text-white/50">No council run cached yet — every seat is a real LLM run, so it's convened manually.</p>
-                        <button className="btn-nebula" onClick={() => setActiveTab('fusion')}>Convene in Fusion →</button>
+                        <p className="text-sm text-white/50">
+                            No council run cached yet — every seat is a real LLM run, so it's convened manually.
+                        </p>
+                        <button className="btn-nebula" onClick={() => setActiveTab('fusion')}>
+                            Convene in Fusion →
+                        </button>
                         <VaultKeyStatus provider="gemini" label="Gemini" />
                     </div>
                 )}
-                {council?.status === 'running' && <p className="text-sm text-white/50">A council is still deliberating — check the Fusion tab.</p>}
+                {council?.status === 'running' && (
+                    <p className="text-sm text-white/50">A council is still deliberating — check the Fusion tab.</p>
+                )}
                 {council?.status === 'error' && <ErrorNote msg={council.error ?? 'Council run failed.'} />}
                 {council?.status === 'done' && (
                     <div>
                         <div className="mb-2 flex flex-wrap items-center gap-3">
-                            <span className={`font-display text-2xl font-black ${VOTE_CLS[council.verdict ?? 'HOLD']}`}>{council.verdict}</span>
+                            <span className={`font-display text-2xl font-black ${VOTE_CLS[council.verdict ?? 'HOLD']}`}>
+                                {council.verdict}
+                            </span>
                             <span className="text-xs text-white/50">seat agreement {council.agreement}%</span>
                         </div>
                         <p className="whitespace-pre-wrap text-sm leading-relaxed text-white/80">{council.chairRuling}</p>

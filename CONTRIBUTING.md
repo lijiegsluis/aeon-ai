@@ -27,10 +27,10 @@ git checkout -b feat/your-feature-name
 
 ## Project Structure
 
-| Directory | Purpose | Language |
-|---|---|---|
+| Directory       | Purpose                      | Language           |
+| --------------- | ---------------------------- | ------------------ |
 | `frontend/src/` | React SPA (Cloudflare Pages) | TypeScript + React |
-| `worker/src/` | Cloudflare Worker API | TypeScript |
+| `worker/src/`   | Cloudflare Worker API        | TypeScript         |
 
 ---
 
@@ -40,7 +40,7 @@ git checkout -b feat/your-feature-name
 
 - **TypeScript**: Strict mode, no `any` types (use proper interfaces from `types.ts`)
 - **Formatting**: Use your editor's default formatter — consistency matters more than style
-- **Comments**: Document *why*, not *what* — the code should be self-explanatory
+- **Comments**: Document _why_, not _what_ — the code should be self-explanatory
 - **Naming**: `camelCase` for variables/functions, `PascalCase` for types/components
 
 ### Architecture Principles

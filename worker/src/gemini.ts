@@ -1,7 +1,14 @@
 import type {
-    RiskFactor, Catalyst, FinancialData, SentimentResult,
-    ScenarioAnalysis, RevenueBreakdown, CompetitiveMoat,
-    SWOTAnalysis, InvestmentThesis, NewsHeadline,
+    RiskFactor,
+    Catalyst,
+    FinancialData,
+    SentimentResult,
+    ScenarioAnalysis,
+    RevenueBreakdown,
+    CompetitiveMoat,
+    SWOTAnalysis,
+    InvestmentThesis,
+    NewsHeadline,
 } from './types';
 
 // ─── Multi-Model Gemini Strategy ───────────────────────────────────
@@ -46,7 +53,7 @@ async function callGemini(
     prompt: string,
     apiKey: string,
     models: string[],
-    config: { temperature: number; maxOutputTokens: number; json?: boolean }
+    config: { temperature: number; maxOutputTokens: number; json?: boolean },
 ): Promise<string> {
     for (const model of models) {
         try {
@@ -99,7 +106,7 @@ async function callGemini(
  */
 export async function extractRisks(
     ticker: string,
-    apiKey: string
+    apiKey: string,
 ): Promise<{ risks: RiskFactor[]; catalysts: Catalyst[]; newsHeadlines: NewsHeadline[] }> {
     // Fetch news context from Yahoo Finance RSS
     let newsContext = '';
@@ -107,12 +114,15 @@ export async function extractRisks(
     try {
         const rssRes = await fetch(
             `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${encodeURIComponent(ticker)}&region=US&lang=en-US`,
-            { headers: { 'User-Agent': 'AeonNimbusAI/2.0' } }
+            { headers: { 'User-Agent': 'AeonNimbusAI/2.0' } },
         );
         if (rssRes.ok) {
             const xml = await rssRes.text();
             const items = extractNewsItems(xml);
-            newsContext = items.slice(0, 20).map((item) => `- ${item.title}`).join('\n');
+            newsContext = items
+                .slice(0, 20)
+                .map((item) => `- ${item.title}`)
+                .join('\n');
             newsHeadlines.push(...items.slice(0, 10));
         }
     } catch {
@@ -132,9 +142,11 @@ Return ONLY a JSON object with this exact structure:
   "catalysts": [{"description": "...", "timeline": "...", "impact": "positive|negative|neutral"}]
 }`;
 
-    const text = await callGemini(prompt, apiKey, [
-        GEMINI_MODELS.lite, GEMINI_MODELS.flash, GEMINI_MODELS.flash3
-    ], { temperature: 0.2, maxOutputTokens: 4000, json: true });
+    const text = await callGemini(prompt, apiKey, [GEMINI_MODELS.lite, GEMINI_MODELS.flash, GEMINI_MODELS.flash3], {
+        temperature: 0.2,
+        maxOutputTokens: 4000,
+        json: true,
+    });
 
     let parsed: { risks?: RiskFactor[]; catalysts?: Catalyst[] };
     try {
@@ -160,7 +172,7 @@ export async function synthesizeReport(
     sentiment: SentimentResult,
     risks: RiskFactor[],
     catalysts: Catalyst[],
-    apiKey: string
+    apiKey: string,
 ): Promise<string> {
     const prompt = `<VERIFIED_NUMBERS>
 Ticker: ${financials.ticker}
@@ -208,9 +220,10 @@ Format as markdown with headers. End with this exact disclaimer:
 "⚠️ DISCLAIMER: This is not financial advice. This report is for educational and informational purposes only. Always conduct your own research and consult with a qualified financial advisor before making investment decisions."
 </INSTRUCTIONS>`;
 
-    return await callGemini(prompt, apiKey, [
-        GEMINI_MODELS.pro, GEMINI_MODELS.pro3, GEMINI_MODELS.flash
-    ], { temperature: 0.4, maxOutputTokens: 8000 });
+    return await callGemini(prompt, apiKey, [GEMINI_MODELS.pro, GEMINI_MODELS.pro3, GEMINI_MODELS.flash], {
+        temperature: 0.4,
+        maxOutputTokens: 8000,
+    });
 }
 
 /**
@@ -224,7 +237,7 @@ export async function generatePremiumInsights(
     sentiment: SentimentResult,
     risks: RiskFactor[],
     catalysts: Catalyst[],
-    apiKey: string
+    apiKey: string,
 ): Promise<{
     scenarioAnalysis: ScenarioAnalysis;
     revenueBreakdown: RevenueBreakdown;
@@ -240,8 +253,14 @@ Market Cap: $${formatNumber(financials.marketCap)} | Beta: ${financials.beta}
 Gross Margin: ${financials.grossMargin}% | D/E: ${financials.debtToEquity}
 Dividend Yield: ${financials.dividendYield}% | Sector: ${financials.sector}
 Sentiment: ${sentiment.bullishPercent}% bullish, ${sentiment.bearishPercent}% bearish
-Key Risks: ${risks.slice(0, 3).map(r => r.description).join('; ')}
-Key Catalysts: ${catalysts.slice(0, 3).map(c => c.description).join('; ')}
+Key Risks: ${risks
+        .slice(0, 3)
+        .map((r) => r.description)
+        .join('; ')}
+Key Catalysts: ${catalysts
+        .slice(0, 3)
+        .map((c) => c.description)
+        .join('; ')}
 
 Return a JSON object with ALL of these sections:
 
@@ -281,9 +300,11 @@ Return a JSON object with ALL of these sections:
 
 IMPORTANT: Use ONLY the verified numbers above. Do not invent data. Provide realistic price targets based on the fundamentals.`;
 
-    const text = await callGemini(prompt, apiKey, [
-        GEMINI_MODELS.flash, GEMINI_MODELS.flash3, GEMINI_MODELS.lite
-    ], { temperature: 0.3, maxOutputTokens: 8000, json: true });
+    const text = await callGemini(prompt, apiKey, [GEMINI_MODELS.flash, GEMINI_MODELS.flash3, GEMINI_MODELS.lite], {
+        temperature: 0.3,
+        maxOutputTokens: 8000,
+        json: true,
+    });
 
     let parsed;
     try {
@@ -302,8 +323,20 @@ IMPORTANT: Use ONLY the verified numbers above. Do not invent data. Provide real
 
     // Provide defaults for any missing sections
     const defaultScenario = {
-        bull: { label: 'Bull Case', price: financials.price * 1.3, upside: 30, probability: 25, rationale: 'Optimistic outlook based on catalysts' },
-        base: { label: 'Base Case', price: financials.price * 1.05, upside: 5, probability: 50, rationale: 'Current trajectory maintained' },
+        bull: {
+            label: 'Bull Case',
+            price: financials.price * 1.3,
+            upside: 30,
+            probability: 25,
+            rationale: 'Optimistic outlook based on catalysts',
+        },
+        base: {
+            label: 'Base Case',
+            price: financials.price * 1.05,
+            upside: 5,
+            probability: 50,
+            rationale: 'Current trajectory maintained',
+        },
         bear: { label: 'Bear Case', price: financials.price * 0.8, upside: -20, probability: 25, rationale: 'Key risks materialize' },
         timeHorizon: '12 months',
         methodology: 'Multi-factor analysis',
@@ -311,8 +344,19 @@ IMPORTANT: Use ONLY the verified numbers above. Do not invent data. Provide real
 
     return {
         scenarioAnalysis: parsed.scenarioAnalysis || defaultScenario,
-        revenueBreakdown: parsed.revenueBreakdown || { segments: [], totalRevenue: 0, revenueGrowth: 0, summary: 'Revenue breakdown unavailable' },
-        competitiveMoat: parsed.competitiveMoat || { rating: 'Narrow', score: 50, sources: [], durability: 'medium', interpretation: 'Insufficient data' },
+        revenueBreakdown: parsed.revenueBreakdown || {
+            segments: [],
+            totalRevenue: 0,
+            revenueGrowth: 0,
+            summary: 'Revenue breakdown unavailable',
+        },
+        competitiveMoat: parsed.competitiveMoat || {
+            rating: 'Narrow',
+            score: 50,
+            sources: [],
+            durability: 'medium',
+            interpretation: 'Insufficient data',
+        },
         swotAnalysis: parsed.swotAnalysis || { strengths: [], weaknesses: [], opportunities: [], threats: [] },
         investmentThesis: parsed.investmentThesis || { summary: '', bullCase: '', bearCase: '' },
     };

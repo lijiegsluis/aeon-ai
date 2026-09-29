@@ -35,12 +35,14 @@ export const logger = {
 
     error(phase: string, message: string, err?: unknown, meta?: Partial<LogEntry>) {
         const errorMessage = err instanceof Error ? err.message : String(err ?? '');
-        console.error(JSON.stringify({
-            level: 'error',
-            phase,
-            message,
-            error: errorMessage,
-            ...meta,
-        }));
+        console.error(
+            JSON.stringify({
+                level: 'error',
+                phase,
+                message,
+                error: errorMessage,
+                ...meta,
+            }),
+        );
     },
 };

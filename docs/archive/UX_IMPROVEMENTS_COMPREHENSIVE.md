@@ -3,12 +3,14 @@
 ## 🎯 CURRENT STATE ANALYSIS
 
 ### What's Working:
+
 - ✅ Clean dark theme
 - ✅ Gold accent branding
 - ✅ Real-time updates
 - ✅ Three-tab structure
 
 ### What Needs Improvement:
+
 - 🔄 Information hierarchy unclear
 - 🔄 Too much scrolling required
 - 🔄 No quick actions/shortcuts
@@ -25,6 +27,7 @@
 ### 1. INFORMATION ARCHITECTURE REDESIGN
 
 #### Problem: Current 3-tab layout hides information
+
 **Solution: Multi-panel Dashboard (Bloomberg Terminal Style)**
 
 ```
@@ -50,6 +53,7 @@
 ```
 
 **Benefits:**
+
 - See multiple data types simultaneously
 - No tab switching required
 - Contextual information always visible
@@ -77,6 +81,7 @@ Red (Danger) | Orange (Euforia) | Green (Accumulation) | Blue (Pre-Rumor)
 ```
 
 **Implementation:**
+
 ```typescript
 // EventTimeline.tsx
 interface TimelineEvent {
@@ -110,7 +115,7 @@ const EventTimeline = ({ events, onEventClick }) => {
 
 ```
         Mon  Tue  Wed  Thu  Fri
-Week 1  ██   ░░   ░░   ███  ░░   
+Week 1  ██   ░░   ░░   ███  ░░
 Week 2  ░░   ██   ███  ░░   ██
 Week 3  ███  ░░   ██   ░░   ░░
 Week 4  ░░   ███  ░░   ██   ███
@@ -119,6 +124,7 @@ Legend: ███ High Activity | ██ Medium | ░░ Low
 ```
 
 **Benefits:**
+
 - Quickly identify busy periods
 - Plan ahead for volatility
 - Avoid overlapping events
@@ -169,6 +175,7 @@ Legend: ███ High Activity | ██ Medium | ░░ Low
 ```
 
 **Key Improvements:**
+
 1. **Default view** - Essential info only
 2. **One-click actions** - Common tasks accessible
 3. **Progressive disclosure** - Details on demand
@@ -307,19 +314,19 @@ Search queries:
 
 ```typescript
 interface UserPreferences {
-  defaultView: 'grid' | 'list' | 'timeline';
-  defaultTimeframe: 7 | 30 | 90;
-  favoriteFilters: SavedFilter[];
-  notificationPreferences: {
-    desktop: boolean;
-    email: boolean;
-    push: boolean;
-    threshold: 'all' | 'high-only' | 'critical';
-  };
-  theme: {
-    accentColor: string; // Allow custom gold shade
-    density: 'comfortable' | 'compact' | 'spacious';
-  };
+    defaultView: 'grid' | 'list' | 'timeline';
+    defaultTimeframe: 7 | 30 | 90;
+    favoriteFilters: SavedFilter[];
+    notificationPreferences: {
+        desktop: boolean;
+        email: boolean;
+        push: boolean;
+        threshold: 'all' | 'high-only' | 'critical';
+    };
+    theme: {
+        accentColor: string; // Allow custom gold shade
+        density: 'comfortable' | 'compact' | 'spacious';
+    };
 }
 ```
 
@@ -501,6 +508,7 @@ Bearish ┤
 #### B. News Priority Scoring
 
 **Show most relevant news first based on:**
+
 - User's watchlist
 - Portfolio holdings
 - Recent searches
@@ -562,12 +570,8 @@ Bearish ┤
 #### A. Screen Reader Support
 
 ```html
-<div 
-  role="article" 
-  aria-label="FOMC Meeting, 3 days away, Euforia phase, High impact"
-  tabindex="0"
->
-  <!-- Event content -->
+<div role="article" aria-label="FOMC Meeting, 3 days away, Euforia phase, High impact" tabindex="0">
+    <!-- Event content -->
 </div>
 ```
 
@@ -590,6 +594,7 @@ Bearish ┤
 ## 📊 PRIORITY MATRIX
 
 ### Must Have (Week 1):
+
 1. Multi-panel dashboard layout
 2. Interactive event timeline
 3. Smart event cards with progressive disclosure
@@ -597,6 +602,7 @@ Bearish ┤
 5. Contextual tooltips
 
 ### Should Have (Week 2):
+
 6. Heat map view
 7. Advanced filtering
 8. News grouping and priority
@@ -604,6 +610,7 @@ Bearish ┤
 10. Quick action buttons
 
 ### Nice to Have (Week 3):
+
 11. Saved filter presets
 12. Custom themes
 13. Keyboard shortcuts
@@ -615,52 +622,55 @@ Bearish ┤
 ## 🎨 DESIGN SYSTEM UPDATES
 
 ### Typography Scale:
+
 ```css
---text-micro: 0.625rem;   /* 10px - Timestamps */
---text-tiny: 0.6875rem;   /* 11px - Labels */
---text-xs: 0.75rem;       /* 12px - Captions */
---text-sm: 0.875rem;      /* 14px - Body small */
---text-base: 1rem;        /* 16px - Body */
---text-lg: 1.125rem;      /* 18px - Subheadings */
---text-xl: 1.25rem;       /* 20px - Headings */
---text-2xl: 1.5rem;       /* 24px - Page titles */
---text-3xl: 2rem;         /* 32px - Hero */
+--text-micro: 0.625rem; /* 10px - Timestamps */
+--text-tiny: 0.6875rem; /* 11px - Labels */
+--text-xs: 0.75rem; /* 12px - Captions */
+--text-sm: 0.875rem; /* 14px - Body small */
+--text-base: 1rem; /* 16px - Body */
+--text-lg: 1.125rem; /* 18px - Subheadings */
+--text-xl: 1.25rem; /* 20px - Headings */
+--text-2xl: 1.5rem; /* 24px - Page titles */
+--text-3xl: 2rem; /* 32px - Hero */
 ```
 
 ### Spacing System:
+
 ```css
 --space-px: 1px;
 --space-0: 0;
---space-1: 0.25rem;  /* 4px */
---space-2: 0.5rem;   /* 8px */
---space-3: 0.75rem;  /* 12px */
---space-4: 1rem;     /* 16px */
---space-5: 1.25rem;  /* 20px */
---space-6: 1.5rem;   /* 24px */
---space-8: 2rem;     /* 32px */
---space-10: 2.5rem;  /* 40px */
---space-12: 3rem;    /* 48px */
---space-16: 4rem;    /* 64px */
+--space-1: 0.25rem; /* 4px */
+--space-2: 0.5rem; /* 8px */
+--space-3: 0.75rem; /* 12px */
+--space-4: 1rem; /* 16px */
+--space-5: 1.25rem; /* 20px */
+--space-6: 1.5rem; /* 24px */
+--space-8: 2rem; /* 32px */
+--space-10: 2.5rem; /* 40px */
+--space-12: 3rem; /* 48px */
+--space-16: 4rem; /* 64px */
 ```
 
 ### Component States:
+
 ```css
 .interactive {
-  transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .interactive:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
 }
 
 .interactive:active {
-  transform: translateY(0);
+    transform: translateY(0);
 }
 
 .interactive:focus-visible {
-  outline: 2px solid var(--gold-primary);
-  outline-offset: 2px;
+    outline: 2px solid var(--gold-primary);
+    outline-offset: 2px;
 }
 ```
 
@@ -673,10 +683,10 @@ Bearish ┤
 3. **Session Recording:** Watch how users navigate
 4. **User Interviews:** Ask about pain points
 5. **Metrics:**
-   - Time to find event
-   - Actions per session
-   - Feature usage rates
-   - Bounce rate by page
+    - Time to find event
+    - Actions per session
+    - Feature usage rates
+    - Bounce rate by page
 
 ---
 

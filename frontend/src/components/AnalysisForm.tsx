@@ -25,9 +25,7 @@ export default function AnalysisForm() {
             {/* Demo mode badge */}
             {demoMode && (
                 <div className="mb-6 flex justify-center">
-                    <span className="badge-gold">
-                        🎮 Demo Mode — Using realistic mock data
-                    </span>
+                    <span className="badge-gold">🎮 Demo Mode — Using realistic mock data</span>
                 </div>
             )}
 
@@ -37,7 +35,9 @@ export default function AnalysisForm() {
                     <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/20 shadow-glow">
                         <span className="text-3xl">✨</span>
                     </div>
-                    <h2 className="mb-2 font-display text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-white/90 to-white/60">Analyze a Stock</h2>
+                    <h2 className="mb-2 font-display text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-white/90 to-white/60">
+                        Analyze a Stock
+                    </h2>
                     <p className="text-sm text-white/50 max-w-sm mx-auto">
                         Enter a ticker symbol to generate an ultra-premium, AI-driven financial manifesto.
                     </p>
@@ -57,7 +57,9 @@ export default function AnalysisForm() {
                             id="ticker-input"
                         />
                         <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                            <span className="rounded-md bg-white/5 px-2 py-1 font-mono text-[10px] font-bold tracking-widest text-white/30 border border-white/10">TICKER</span>
+                            <span className="rounded-md bg-white/5 px-2 py-1 font-mono text-[10px] font-bold tracking-widest text-white/30 border border-white/10">
+                                TICKER
+                            </span>
                         </div>
                     </div>
 
@@ -90,7 +92,10 @@ export default function AnalysisForm() {
                                 <span className="text-sm text-accent font-body">{analysisPhase}</span>
                             </div>
                             <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/5">
-                                <div className="h-full animate-shimmer rounded-full bg-gradient-to-r from-transparent via-accent/40 to-transparent" style={{ backgroundSize: '200% 100%' }} />
+                                <div
+                                    className="h-full animate-shimmer rounded-full bg-gradient-to-r from-transparent via-accent/40 to-transparent"
+                                    style={{ backgroundSize: '200% 100%' }}
+                                />
                             </div>
                         </div>
                     </div>

@@ -12,7 +12,7 @@ export async function generateSecondOpinion(
     risks: RiskFactor[],
     catalysts: Catalyst[],
     geminiReport: string,
-    apiKey: string
+    apiKey: string,
 ): Promise<AIConsensus> {
     const prompt = `You are an independent financial analyst. Given the following data for ${financials.ticker}, provide your INDEPENDENT verdict. Do NOT simply agree with any previous analysis.
 
@@ -23,9 +23,9 @@ KEY FINANCIALS:
 
 SENTIMENT: ${sentiment.bullishPercent}% bullish, ${sentiment.bearishPercent}% bearish
 
-RISKS: ${risks.map(r => `[${r.severity}] ${r.description}`).join('; ')}
+RISKS: ${risks.map((r) => `[${r.severity}] ${r.description}`).join('; ')}
 
-CATALYSTS: ${catalysts.map(c => `${c.description} (${c.timeline})`).join('; ')}
+CATALYSTS: ${catalysts.map((c) => `${c.description} (${c.timeline})`).join('; ')}
 
 Respond in this EXACT JSON format:
 {
@@ -39,12 +39,16 @@ Respond in this EXACT JSON format:
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`,
+            Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
             model: 'llama-3.3-70b',
             messages: [
-                { role: 'system', content: 'You are a contrarian financial analyst who provides independent, data-driven opinions. Always respond with valid JSON.' },
+                {
+                    role: 'system',
+                    content:
+                        'You are a contrarian financial analyst who provides independent, data-driven opinions. Always respond with valid JSON.',
+                },
                 { role: 'user', content: prompt },
             ],
             temperature: 0.3,
@@ -128,6 +132,5 @@ function extractGeminiVerdict(report: string): string {
         bearishScore += (lower.match(new RegExp(word, 'g')) || []).length;
     }
 
-    return bullishScore > bearishScore * 1.3 ? 'bullish'
-        : bearishScore > bullishScore * 1.3 ? 'bearish' : 'neutral';
+    return bullishScore > bearishScore * 1.3 ? 'bullish' : bearishScore > bullishScore * 1.3 ? 'bearish' : 'neutral';
 }

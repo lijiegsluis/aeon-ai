@@ -36,27 +36,21 @@ export interface APIKeys {
     fmp?: string;
 }
 
-async function deriveKey(passphrase: string, salt: Uint8Array): Promise<CryptoKey> {
+async function deriveKey(passphrase: string, salt: Uint8Array<ArrayBuffer>): Promise<CryptoKey> {
     const encoder = new TextEncoder();
-    const keyMaterial = await crypto.subtle.importKey(
-        'raw',
-        encoder.encode(passphrase),
-        'PBKDF2',
-        false,
-        ['deriveKey']
-    );
+    const keyMaterial = await crypto.subtle.importKey('raw', encoder.encode(passphrase), 'PBKDF2', false, ['deriveKey']);
 
     return crypto.subtle.deriveKey(
         {
             name: 'PBKDF2',
-            salt: salt.buffer as ArrayBuffer,
+            salt,
             iterations: PBKDF2_ITERATIONS,
             hash: 'SHA-256',
         },
         keyMaterial,
         { name: 'AES-GCM', length: 256 },
         false,
-        ['encrypt', 'decrypt']
+        ['encrypt', 'decrypt'],
     );
 }
 
@@ -66,11 +60,7 @@ export async function encryptKeys(keys: APIKeys, passphrase: string): Promise<vo
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const key = await deriveKey(passphrase, salt);
 
-    const encrypted = await crypto.subtle.encrypt(
-        { name: 'AES-GCM', iv },
-        key,
-        encoder.encode(JSON.stringify(keys))
-    );
+    const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoder.encode(JSON.stringify(keys)));
 
     // Store salt, iv, and ciphertext as base64
     const payload = {
@@ -94,11 +84,7 @@ export async function decryptKeys(passphrase: string): Promise<APIKeys | null> {
         const data = base64ToArray(payload.data);
         const key = await deriveKey(passphrase, salt);
 
-        const decrypted = await crypto.subtle.decrypt(
-            { name: 'AES-GCM', iv: iv.buffer as ArrayBuffer },
-            key,
-            data.buffer as ArrayBuffer
-        );
+        const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
 
         const decoder = new TextDecoder();
         return JSON.parse(decoder.decode(decrypted)) as APIKeys;
@@ -124,11 +110,7 @@ export async function encryptCache(data: string): Promise<string> {
     const salt = crypto.getRandomValues(new Uint8Array(16));
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const key = await deriveKey(CACHE_KEY_PASSPHRASE, salt);
-    const encrypted = await crypto.subtle.encrypt(
-        { name: 'AES-GCM', iv },
-        key,
-        encoder.encode(data)
-    );
+    const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoder.encode(data));
     const payload = {
         s: arrayToBase64(salt),
         i: arrayToBase64(iv),
@@ -144,11 +126,7 @@ export async function decryptCache(stored: string): Promise<string | null> {
         const iv = base64ToArray(payload.i);
         const data = base64ToArray(payload.d);
         const key = await deriveKey(CACHE_KEY_PASSPHRASE, salt);
-        const decrypted = await crypto.subtle.decrypt(
-            { name: 'AES-GCM', iv: iv.buffer as ArrayBuffer },
-            key,
-            data.buffer as ArrayBuffer
-        );
+        const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
         return new TextDecoder().decode(decrypted);
     } catch {
         return null;
@@ -164,7 +142,7 @@ function arrayToBase64(arr: Uint8Array): string {
     return btoa(binary);
 }
 
-function base64ToArray(b64: string): Uint8Array {
+function base64ToArray(b64: string): Uint8Array<ArrayBuffer> {
     const binary = atob(b64);
     const arr = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) {

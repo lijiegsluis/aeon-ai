@@ -43,28 +43,30 @@ AEON NIMBUS ECOSYSTEM
 ## 🎯 PRODUCT FLOW & USER JOURNEY
 
 ### Step 1: Research (Nipun AI)
+
 **"What should I invest in?"**
 
 - User inputs ticker (e.g., AAPL)
 - Gets comprehensive analysis:
-  - Financial health (55+ metrics)
-  - 3 valuation methods (DCF, comparables, Graham)
-  - 5 AI model consensus
-  - Risk assessment
-  - Fair value estimation
+    - Financial health (55+ metrics)
+    - 3 valuation methods (DCF, comparables, Graham)
+    - 5 AI model consensus
+    - Risk assessment
+    - Fair value estimation
 
 **Output:** "AAPL is undervalued by 12%. Strong fundamentals. BUY candidate."
 
 ---
 
 ### Step 2: Timing (Aeon Intelligence)
+
 **"When should I buy/sell?"**
 
 - User tracks AAPL in Intelligence
 - Sees upcoming events:
-  - Earnings in D-12 (Accumulation phase - BUY)
-  - FOMC in D-5 (Euforia phase - WATCH)
-  - iPhone launch in D-20 (Pre-rumor phase - EARLY ENTRY)
+    - Earnings in D-12 (Accumulation phase - BUY)
+    - FOMC in D-5 (Euforia phase - WATCH)
+    - iPhone launch in D-20 (Pre-rumor phase - EARLY ENTRY)
 - Gets phase-based recommendations
 - Portfolio exposure analysis
 - AI predictions with confidence scores
@@ -74,15 +76,16 @@ AEON NIMBUS ECOSYSTEM
 ---
 
 ### Step 3: Synthesize (Aeon Platform)
+
 **"What's the big picture?"**
 
 - User opens Platform for unified market overview
 - Sees market-wide insights:
-  - Danger zone events (next 48 hours)
-  - Accumulation opportunities (D-10 to D-20)
-  - AI-generated insights across all tickers
-  - Trading signals with entry/exit/stop levels
-  - Fear & Greed Index
+    - Danger zone events (next 48 hours)
+    - Accumulation opportunities (D-10 to D-20)
+    - AI-generated insights across all tickers
+    - Trading signals with entry/exit/stop levels
+    - Fear & Greed Index
 - Gets actionable trading recommendations
 - Multi-ticker opportunities in one view
 
@@ -91,6 +94,7 @@ AEON NIMBUS ECOSYSTEM
 ---
 
 ### Step 4: Monitor (Aeon Terminal)
+
 **"What's happening right now?"**
 
 - Real-time news aggregation (Telegram, RSS, Twitter)
@@ -110,6 +114,7 @@ AEON NIMBUS ECOSYSTEM
 **Status:** ✅ Production-ready, well-polished
 
 **Key Features:**
+
 - 55+ financial metrics (growth, profitability, efficiency, solvency)
 - DCF valuation with sensitivity analysis
 - Peer comparison (industry multiples)
@@ -120,11 +125,13 @@ AEON NIMBUS ECOSYSTEM
 - Demo mode with no API keys
 
 **Tech Stack:**
+
 - Frontend: React + TypeScript + Vite + Tailwind
 - Backend: Cloudflare Workers (serverless)
 - Data: SEC EDGAR, Financial Modeling Prep, Alpha Vantage
 
 **Monetization:**
+
 - Free: 5 analyses/day
 - Pro ($19/mo): Unlimited analyses, PDF export, API access
 - Teams ($99/mo): 10 seats, shared reports, collaboration
@@ -136,6 +143,7 @@ AEON NIMBUS ECOSYSTEM
 **Status:** ✅ Production-ready with new AI prediction engine
 
 **Key Features:**
+
 - D-X countdown system (proprietary IP)
 - 4-phase framework (Danger, Euforia, Accumulation, Pre-Rumor)
 - 38+ major events (earnings, FOMC, CPI, NFP, GDP, OPEC)
@@ -150,12 +158,14 @@ AEON NIMBUS ECOSYSTEM
 - **NEW:** 52 data sources integrated
 
 **Tech Stack:**
+
 - Frontend: React + TypeScript + Vite + Framer Motion
 - Backend: FastAPI + Python
 - Database: SQLite (migrate to PostgreSQL for production)
 - AI: Claude + FinBERT + Prophet
 
 **Monetization:**
+
 - Free: 5 watchlist tickers, 7-day horizon, basic alerts
 - Pro ($29/mo): Unlimited watchlist, 90-day horizon, all predictions, paper trading
 - Institution ($499/mo): API access, multi-user, custom data sources
@@ -167,47 +177,46 @@ AEON NIMBUS ECOSYSTEM
 **Status:** ✅ Production-ready, unified market dashboard
 
 **Key Features:**
+
 - **Market Overview Dashboard**
-  - Danger zone events counter (next 48 hours)
-  - Accumulation zone opportunities (D-10 to D-20)
-  - Fear & Greed Index with live updates
-  - Real-time connection status
-  
+    - Danger zone events counter (next 48 hours)
+    - Accumulation zone opportunities (D-10 to D-20)
+    - Fear & Greed Index with live updates
+    - Real-time connection status
 - **Trading Signals**
-  - Entry/exit/stop levels for each ticker
-  - Confidence scores (0-100%)
-  - Risk/reward ratios calculated
-  - Timeframe recommendations
-  - Detailed reasoning for each signal
-  
+    - Entry/exit/stop levels for each ticker
+    - Confidence scores (0-100%)
+    - Risk/reward ratios calculated
+    - Timeframe recommendations
+    - Detailed reasoning for each signal
 - **AI Insights**
-  - Pattern recognition insights
-  - Correlation insights (sector movements)
-  - Sentiment-driven insights
-  - Contrarian opportunities
-  - Confidence-weighted recommendations
-  
+    - Pattern recognition insights
+    - Correlation insights (sector movements)
+    - Sentiment-driven insights
+    - Contrarian opportunities
+    - Confidence-weighted recommendations
 - **Event Tracker**
-  - All upcoming events in one view
-  - Phase-based filtering
-  - Impact scores
-  - Affected tickers for each event
-  - Days-away countdown
-  
+    - All upcoming events in one view
+    - Phase-based filtering
+    - Impact scores
+    - Affected tickers for each event
+    - Days-away countdown
 - **Market News**
-  - Real-time news feed
-  - Ticker extraction
-  - Sentiment analysis (positive/negative/neutral)
-  - Source attribution
-  - Timestamp tracking
+    - Real-time news feed
+    - Ticker extraction
+    - Sentiment analysis (positive/negative/neutral)
+    - Source attribution
+    - Timestamp tracking
 
 **Tech Stack:**
+
 - Frontend: React + TypeScript + Vite
 - Backend: Shared FastAPI with Intelligence (port 8001)
 - Styling: Custom CSS with professional design system
 - Updates: 10-second polling for real-time data
 
 **Unique Value:**
+
 - **Synthesis layer** - Combines intelligence from all data sources
 - **High-level view** - Market-wide perspective, not ticker-specific
 - **Actionable signals** - Exact entry/exit/stop levels
@@ -215,6 +224,7 @@ AEON NIMBUS ECOSYSTEM
 - **Clean UI** - Professional sidebar navigation, metrics cards
 
 **Monetization:**
+
 - Free: View-only access, 5 signals per day
 - Pro ($29/mo): Unlimited signals, custom alerts, export data
 - Trader ($99/mo): API access, backtesting, advanced insights
@@ -226,6 +236,7 @@ AEON NIMBUS ECOSYSTEM
 **Status:** ⚠️ Functional but disorganized, needs complete redesign
 
 **Current Issues:**
+
 - Multiple scattered Python files (main.py, api_extensions.py, sentiment_analyzer.py, etc.)
 - No clear frontend interface (analytics folder exists but not integrated)
 - Telegram integration not fully unified with other products
@@ -235,39 +246,40 @@ AEON NIMBUS ECOSYSTEM
 **What It Should Be:**
 
 A **professional trading workstation** combining:
+
 1. **Real-time Market Dashboard**
-   - Live price tickers (stocks, crypto, forex, commodities)
-   - Market heat maps (sector performance, gainers/losers)
-   - Volatility indicators (VIX, put/call ratios)
-   - Economic calendar with real-time releases
+    - Live price tickers (stocks, crypto, forex, commodities)
+    - Market heat maps (sector performance, gainers/losers)
+    - Volatility indicators (VIX, put/call ratios)
+    - Economic calendar with real-time releases
 
 2. **News Aggregation Hub**
-   - Telegram channels (8 sources: @Tradeul_Breaking_News, @DeItaone, @FirstSquawk, etc.)
-   - RSS feeds (Bloomberg, Reuters, CNBC, WSJ, FT, MarketWatch, Seeking Alpha)
-   - Twitter/X monitoring via Nitter
-   - Reddit sentiment (r/wallstreetbets, r/stocks, r/investing)
-   - Auto-categorization by ticker, event type, sentiment
+    - Telegram channels (8 sources: @Tradeul_Breaking_News, @DeItaone, @FirstSquawk, etc.)
+    - RSS feeds (Bloomberg, Reuters, CNBC, WSJ, FT, MarketWatch, Seeking Alpha)
+    - Twitter/X monitoring via Nitter
+    - Reddit sentiment (r/wallstreetbets, r/stocks, r/investing)
+    - Auto-categorization by ticker, event type, sentiment
 
 3. **Sentiment Intelligence**
-   - Real-time sentiment scoring (FinBERT)
-   - Sentiment momentum tracking (velocity of change)
-   - Social media buzz metrics
-   - Fear & Greed Index
-   - Contrarian indicators
+    - Real-time sentiment scoring (FinBERT)
+    - Sentiment momentum tracking (velocity of change)
+    - Social media buzz metrics
+    - Fear & Greed Index
+    - Contrarian indicators
 
 4. **Smart Money Tracking**
-   - SEC Form 4 filings (insider trades - real-time)
-   - 13F filings (institutional positions - quarterly)
-   - Congressional trades (STOCK Act disclosures)
-   - Options flow (unusual activity, sweeps, dark pool)
-   - Whale tracking (large block trades)
+    - SEC Form 4 filings (insider trades - real-time)
+    - 13F filings (institutional positions - quarterly)
+    - Congressional trades (STOCK Act disclosures)
+    - Options flow (unusual activity, sweeps, dark pool)
+    - Whale tracking (large block trades)
 
 5. **Multi-Screen Workspace**
-   - Customizable layouts (save/load)
-   - Drag-and-drop panels
-   - Keyboard shortcuts (Bloomberg-style)
-   - Command palette (Cmd+K)
-   - Multi-monitor support
+    - Customizable layouts (save/load)
+    - Drag-and-drop panels
+    - Keyboard shortcuts (Bloomberg-style)
+    - Command palette (Cmd+K)
+    - Multi-monitor support
 
 **Redesign Plan:**
 
@@ -314,6 +326,7 @@ aeon-terminal/
 ```
 
 **Tech Stack:**
+
 - Frontend: React + TypeScript + Vite + React Grid Layout
 - Backend: FastAPI + Python + WebSockets
 - Database: PostgreSQL + Redis (caching)
@@ -321,6 +334,7 @@ aeon-terminal/
 - Deployment: Docker Compose
 
 **Monetization:**
+
 - Free: Limited news sources, 1-hour delayed data, 5 alerts
 - Pro ($39/mo): All news sources, real-time data, unlimited alerts, custom layouts
 - Trader ($99/mo): Advanced sentiment, smart money tracking, API access, multi-monitor
@@ -330,36 +344,39 @@ aeon-terminal/
 ## 🎨 UNIFIED DESIGN SYSTEM
 
 ### Brand Identity
+
 - **Name:** Aeon Nimbus
 - **Tagline:** "Institutional Intelligence, Democratized"
 - **Colors:**
-  - Primary: Gold (#d4af37) - Premium, intelligent
-  - Background: Dark (#0a0a0a) - Professional, focus
-  - Accent: Electric Blue (#00d9ff) - Tech, data
-  - Success: Green (#00ff88) - Positive signals
-  - Warning: Orange (#ffa500) - Caution
-  - Danger: Red (#ff0040) - Critical alerts
+    - Primary: Gold (#d4af37) - Premium, intelligent
+    - Background: Dark (#0a0a0a) - Professional, focus
+    - Accent: Electric Blue (#00d9ff) - Tech, data
+    - Success: Green (#00ff88) - Positive signals
+    - Warning: Orange (#ffa500) - Caution
+    - Danger: Red (#ff0040) - Critical alerts
 
 ### Typography
+
 - **Headings:** Inter (clean, modern)
 - **Body:** Inter (readable, professional)
 - **Code/Data:** JetBrains Mono (monospace for numbers)
 
 ### Components Library (Shared across all products)
+
 ```typescript
 // Shared component package: @aeon-nimbus/ui
 export {
-  Button,
-  Card,
-  DataTable,
-  Chart,
-  Badge,
-  Alert,
-  Modal,
-  Tooltip,
-  CommandPalette,
-  // ... all shared components
-}
+    Button,
+    Card,
+    DataTable,
+    Chart,
+    Badge,
+    Alert,
+    Modal,
+    Tooltip,
+    CommandPalette,
+    // ... all shared components
+};
 ```
 
 ---
@@ -367,6 +384,7 @@ export {
 ## 🌍 DEPLOYMENT & PACKAGING STRATEGY
 
 ### Option 1: Monorepo (Recommended)
+
 ```
 aeonnimbus.com/
 ├── packages/
@@ -386,6 +404,7 @@ aeonnimbus.com/
 ```
 
 ### Option 2: Separate Repos with Shared Package
+
 ```
 npm install @aeon-nimbus/ui
 npm install @aeon-nimbus/utils
@@ -443,18 +462,21 @@ Landing Page (/)
 ### Individual Plans
 
 **STARTER (FREE)**
+
 - Nipun AI: 5 analyses/day
 - Intelligence: 5 tickers, 7-day horizon
 - Terminal: Basic news, 1-hour delayed data
 - Support: Community
 
 **PRO ($49/month)**
+
 - Nipun AI: Unlimited analyses + PDF export
 - Intelligence: Unlimited tickers, 90-day horizon, AI predictions
 - Terminal: Real-time data, all news sources
 - Support: Email (24-hour response)
 
 **TRADER ($99/month)**
+
 - Everything in Pro
 - Intelligence: Paper trading, custom alerts
 - Terminal: Smart money tracking, advanced sentiment, API access
@@ -463,6 +485,7 @@ Landing Page (/)
 ### Team Plans
 
 **TEAM ($299/month)**
+
 - 5 seats
 - Shared watchlists and reports
 - Collaboration features
@@ -470,6 +493,7 @@ Landing Page (/)
 - Support: Dedicated Slack channel
 
 **ENTERPRISE (Custom)**
+
 - Unlimited seats
 - On-premise deployment option
 - Custom data sources
@@ -482,11 +506,13 @@ Landing Page (/)
 ## 🔗 INTEGRATION STRATEGY
 
 ### Single Sign-On (SSO)
+
 - One account for all 3 products
 - JWT authentication
 - OAuth integrations (Google, GitHub)
 
 ### Unified API
+
 ```
 api.aeonnimbus.com/
 ├── /v1/nipun         # Nipun AI endpoints
@@ -495,21 +521,23 @@ api.aeonnimbus.com/
 ```
 
 ### Data Sharing
+
 - Watchlists sync across products
 - Alerts trigger across all products
 - Unified user preferences
 
 ### Cross-Product Features
+
 ```typescript
 // Example: Click ticker in Intelligence → Opens in Nipun AI
-<Ticker 
-  symbol="AAPL" 
+<Ticker
+  symbol="AAPL"
   onClick={() => openInNipunAI("AAPL")}
 />
 
 // Example: News item in Terminal → Shows related events in Intelligence
-<NewsItem 
-  ticker="NVDA" 
+<NewsItem
+  ticker="NVDA"
   onEventClick={() => openInIntelligence("NVDA")}
 />
 ```
@@ -519,12 +547,14 @@ api.aeonnimbus.com/
 ## 📈 GO-TO-MARKET STRATEGY
 
 ### Phase 1: Soft Launch (Month 1)
+
 - Deploy aeonnimbus.com landing page
 - Beta access (invite-only)
 - 100 beta users
 - Collect feedback
 
 ### Phase 2: Public Launch (Month 2)
+
 - Open registration
 - Free tier + Pro tier
 - Product Hunt launch
@@ -532,6 +562,7 @@ api.aeonnimbus.com/
 - Finance Reddit AMAs
 
 ### Phase 3: Growth (Month 3-6)
+
 - Content marketing (blog, videos)
 - SEO optimization
 - Paid ads (Google, Twitter)
@@ -539,6 +570,7 @@ api.aeonnimbus.com/
 - API partnerships
 
 ### Phase 4: Enterprise (Month 6-12)
+
 - Enterprise sales team
 - Case studies
 - Institutional partnerships
@@ -549,6 +581,7 @@ api.aeonnimbus.com/
 ## 🛠️ TECHNICAL IMPLEMENTATION ROADMAP
 
 ### Week 1-2: Infrastructure
+
 - [ ] Set up monorepo structure
 - [ ] Create shared UI component library
 - [ ] Set up unified authentication
@@ -556,6 +589,7 @@ api.aeonnimbus.com/
 - [ ] Configure domain (aeonnimbus.com)
 
 ### Week 3-4: Aeon Terminal Redesign
+
 - [ ] New frontend workspace layout
 - [ ] Unified backend API structure
 - [ ] Real-time WebSocket implementation
@@ -563,12 +597,14 @@ api.aeonnimbus.com/
 - [ ] Smart money tracking dashboard
 
 ### Week 5-6: Integration
+
 - [ ] Cross-product navigation
 - [ ] Unified watchlists
 - [ ] Shared alert system
 - [ ] Single sign-on implementation
 
 ### Week 7-8: Website & Launch
+
 - [ ] aeonnimbus.com landing page
 - [ ] Product documentation
 - [ ] Pricing pages
@@ -580,11 +616,13 @@ api.aeonnimbus.com/
 ## 📊 SUCCESS METRICS
 
 ### Product Metrics
+
 - **Nipun AI:** Analyses per user, conversion to paid
 - **Intelligence:** Events tracked, alert engagement, prediction accuracy
 - **Terminal:** Time in app, news consumed, layouts created
 
 ### Business Metrics
+
 - **MRR:** Monthly recurring revenue
 - **CAC:** Customer acquisition cost
 - **LTV:** Lifetime value
@@ -592,6 +630,7 @@ api.aeonnimbus.com/
 - **NPS:** Net promoter score
 
 ### Targets (Month 6)
+
 - 1,000 free users
 - 100 Pro users ($4,900 MRR)
 - 20 Trader users ($1,980 MRR)
@@ -616,7 +655,9 @@ api.aeonnimbus.com/
 ## 🏁 NEXT STEPS (IMMEDIATE)
 
 ### 1. Terminal Redesign (Priority 1)
+
 Create new `aeon-terminal/` with clean architecture:
+
 - Modern dashboard UI
 - Unified news aggregation
 - Real-time WebSocket feeds
@@ -624,20 +665,23 @@ Create new `aeon-terminal/` with clean architecture:
 - Customizable layouts
 
 ### 2. Monorepo Setup
+
 - Initialize Turborepo or Nx
 - Create @aeon-nimbus/ui package
 - Move all 3 products into monorepo
 - Set up unified auth
 
 ### 3. Domain & Deployment
+
 - Buy aeonnimbus.com domain
 - Set up hosting (Vercel/Cloudflare)
 - Configure subdomains:
-  - app.aeonnimbus.com (main dashboard)
-  - api.aeonnimbus.com (unified API)
-  - docs.aeonnimbus.com (documentation)
+    - app.aeonnimbus.com (main dashboard)
+    - api.aeonnimbus.com (unified API)
+    - docs.aeonnimbus.com (documentation)
 
 ### 4. Marketing Site
+
 - Build landing page
 - Create product pages
 - Set up pricing page
@@ -660,4 +704,4 @@ Create new `aeon-terminal/` with clean architecture:
 
 **Built with precision. Designed for traders. Powered by AI.**
 
-*Aeon Nimbus - Where institutional intelligence meets retail accessibility.*
+_Aeon Nimbus - Where institutional intelligence meets retail accessibility._

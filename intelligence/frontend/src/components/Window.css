@@ -1,152 +1,154 @@
 .terminal-window {
-  background: transparent;
-  border: none;
-  box-shadow: none;
+    background: transparent;
+    border: none;
+    box-shadow: none;
 }
 
 .window-container {
-  width: 100%;
-  height: 100%;
-  background: #000000;
-  border: 1px solid rgba(0, 217, 255, 0.3);
-  border-radius: 0;
-  box-shadow:
-    0 0 20px rgba(0, 217, 255, 0.15),
-    0 0 40px rgba(212, 175, 55, 0.05),
-    0 8px 32px rgba(0, 0, 0, 0.8);
-  display: flex;
-  flex-direction: column;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    width: 100%;
+    height: 100%;
+    background: #000000;
+    border: 1px solid rgba(0, 217, 255, 0.3);
+    border-radius: 0;
+    box-shadow:
+        0 0 20px rgba(0, 217, 255, 0.15),
+        0 0 40px rgba(212, 175, 55, 0.05),
+        0 8px 32px rgba(0, 0, 0, 0.8);
+    display: flex;
+    flex-direction: column;
+    transition:
+        border-color 0.3s ease,
+        box-shadow 0.3s ease;
 }
 
 .terminal-window:hover .window-container {
-  border-color: rgba(0, 217, 255, 0.5);
-  box-shadow:
-    0 0 30px rgba(0, 217, 255, 0.2),
-    0 0 50px rgba(212, 175, 55, 0.08),
-    0 12px 40px rgba(0, 0, 0, 0.9);
+    border-color: rgba(0, 217, 255, 0.5);
+    box-shadow:
+        0 0 30px rgba(0, 217, 255, 0.2),
+        0 0 50px rgba(212, 175, 55, 0.08),
+        0 12px 40px rgba(0, 0, 0, 0.9);
 }
 
 .window-titlebar {
-  background: linear-gradient(180deg, #1a1a1a 0%, #000000 100%);
-  border-bottom: 1px solid rgba(0, 217, 255, 0.2);
-  padding: 8px 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: move;
-  user-select: none;
-  min-height: 36px;
+    background: linear-gradient(180deg, #1a1a1a 0%, #000000 100%);
+    border-bottom: 1px solid rgba(0, 217, 255, 0.2);
+    padding: 8px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: move;
+    user-select: none;
+    min-height: 36px;
 }
 
 .window-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--cyan-accent, #00d9ff);
-  text-transform: uppercase;
-  letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--cyan-accent, #00d9ff);
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 .window-icon {
-  font-size: 14px;
-  line-height: 1;
+    font-size: 14px;
+    line-height: 1;
 }
 
 .window-title-text {
-  line-height: 1;
+    line-height: 1;
 }
 
 .window-controls {
-  display: flex;
-  gap: 8px;
-  align-items: center;
+    display: flex;
+    gap: 8px;
+    align-items: center;
 }
 
 .window-control {
-  width: 20px;
-  height: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: transparent;
-  color: #ffffff;
-  font-size: 16px;
-  line-height: 1;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'SF Mono', 'Monaco', monospace;
-  padding: 0;
-  border-radius: 0;
+    width: 20px;
+    height: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: transparent;
+    color: #ffffff;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'SF Mono', 'Monaco', monospace;
+    padding: 0;
+    border-radius: 0;
 }
 
 .window-control:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.4);
 }
 
 .window-control.close:hover {
-  background: rgba(255, 59, 48, 0.8);
-  border-color: rgba(255, 59, 48, 1);
-  color: #ffffff;
+    background: rgba(255, 59, 48, 0.8);
+    border-color: rgba(255, 59, 48, 1);
+    color: #ffffff;
 }
 
 .window-control.minimize:hover {
-  background: rgba(255, 204, 0, 0.8);
-  border-color: rgba(255, 204, 0, 1);
-  color: #000000;
+    background: rgba(255, 204, 0, 0.8);
+    border-color: rgba(255, 204, 0, 1);
+    color: #000000;
 }
 
 .window-content {
-  flex: 1;
-  overflow: auto;
-  padding: 16px;
-  background: #000000;
+    flex: 1;
+    overflow: auto;
+    padding: 16px;
+    background: #000000;
 }
 
 /* Custom scrollbar for windows */
 .window-content::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+    width: 8px;
+    height: 8px;
 }
 
 .window-content::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .window-content::-webkit-scrollbar-thumb {
-  background: rgba(0, 217, 255, 0.3);
-  border-radius: 0;
+    background: rgba(0, 217, 255, 0.3);
+    border-radius: 0;
 }
 
 .window-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 217, 255, 0.5);
+    background: rgba(0, 217, 255, 0.5);
 }
 
 /* Resize handles */
 .terminal-window .react-draggable {
-  cursor: default;
+    cursor: default;
 }
 
 .terminal-window .react-resizable-handle {
-  opacity: 0;
-  transition: opacity 0.2s ease;
+    opacity: 0;
+    transition: opacity 0.2s ease;
 }
 
 .terminal-window:hover .react-resizable-handle {
-  opacity: 0.5;
+    opacity: 0.5;
 }
 
 .terminal-window .react-resizable-handle-se {
-  bottom: 0;
-  right: 0;
-  cursor: se-resize;
-  width: 12px;
-  height: 12px;
-  border-right: 2px solid var(--cyan-accent, #00d9ff);
-  border-bottom: 2px solid var(--cyan-accent, #00d9ff);
+    bottom: 0;
+    right: 0;
+    cursor: se-resize;
+    width: 12px;
+    height: 12px;
+    border-right: 2px solid var(--cyan-accent, #00d9ff);
+    border-bottom: 2px solid var(--cyan-accent, #00d9ff);
 }

@@ -31,12 +31,7 @@ export default function PDFExport() {
         const addWatermark = () => {
             doc.setTextColor(200, 200, 200);
             doc.setFontSize(8);
-            doc.text(
-                'Not financial advice. Educational only.',
-                pageWidth / 2,
-                doc.internal.pageSize.getHeight() - 8,
-                { align: 'center' }
-            );
+            doc.text('Not financial advice. Educational only.', pageWidth / 2, doc.internal.pageSize.getHeight() - 8, { align: 'center' });
             doc.setTextColor(0, 0, 0);
         };
 
@@ -86,10 +81,25 @@ export default function PDFExport() {
 
         const financialRows = [
             ['Price', `$${safe(result.financials.price).toFixed(2)}`, 'P/E Ratio', safe(result.financials.pe).toFixed(2)],
-            ['Change', `${safe(result.financials.change) > 0 ? '+' : ''}${safe(result.financials.change).toFixed(2)} (${safe(result.financials.changePercent).toFixed(2)}%)`, 'EPS', `$${safe(result.financials.eps).toFixed(2)}`],
+            [
+                'Change',
+                `${safe(result.financials.change) > 0 ? '+' : ''}${safe(result.financials.change).toFixed(2)} (${safe(result.financials.changePercent).toFixed(2)}%)`,
+                'EPS',
+                `$${safe(result.financials.eps).toFixed(2)}`,
+            ],
             ['Market Cap', formatNum(safe(result.financials.marketCap)), 'Beta', safe(result.financials.beta).toFixed(2)],
-            ['52W High', `$${safe(result.financials.weekHigh52).toFixed(2)}`, '52W Low', `$${safe(result.financials.weekLow52).toFixed(2)}`],
-            ['Gross Margin', `${safe(result.financials.grossMargin).toFixed(2)}%`, 'Debt/Equity', safe(result.financials.debtToEquity).toFixed(2)],
+            [
+                '52W High',
+                `$${safe(result.financials.weekHigh52).toFixed(2)}`,
+                '52W Low',
+                `$${safe(result.financials.weekLow52).toFixed(2)}`,
+            ],
+            [
+                'Gross Margin',
+                `${safe(result.financials.grossMargin).toFixed(2)}%`,
+                'Debt/Equity',
+                safe(result.financials.debtToEquity).toFixed(2),
+            ],
             ['Revenue', formatNum(safe(result.financials.revenue)), 'Div Yield', `${safe(result.financials.dividendYield).toFixed(2)}%`],
         ];
 
@@ -237,14 +247,15 @@ export default function PDFExport() {
             doc.text(
                 `Grounded: ${result.audit.groundedCount} | Speculative: ${result.audit.speculativeCount} | Unverifiable: ${result.audit.unverifiableCount}`,
                 margin,
-                y
+                y,
             );
             y += 6;
 
             for (const claim of result.audit.claims) {
                 checkPageBreak(10);
                 const icon = claim.status === 'grounded' ? '✓' : claim.status === 'speculative' ? '~' : '✗';
-                const color = claim.status === 'grounded' ? [16, 185, 129] : claim.status === 'speculative' ? [245, 158, 11] : [239, 68, 68];
+                const color =
+                    claim.status === 'grounded' ? [16, 185, 129] : claim.status === 'speculative' ? [245, 158, 11] : [239, 68, 68];
                 doc.setTextColor(color[0], color[1], color[2]);
                 doc.setFont('helvetica', 'bold');
                 doc.text(icon, margin, y);
@@ -353,10 +364,16 @@ export default function PDFExport() {
             for (const sc of [result.scenarioAnalysis.bull, result.scenarioAnalysis.base, result.scenarioAnalysis.bear]) {
                 checkPageBreak(14);
                 doc.setFont('helvetica', 'bold');
-                doc.setTextColor(sc.label === 'Bull Case' ? 16 : sc.label === 'Bear Case' ? 239 : 100,
+                doc.setTextColor(
+                    sc.label === 'Bull Case' ? 16 : sc.label === 'Bear Case' ? 239 : 100,
                     sc.label === 'Bull Case' ? 185 : sc.label === 'Bear Case' ? 68 : 100,
-                    sc.label === 'Bull Case' ? 129 : sc.label === 'Bear Case' ? 68 : 100);
-                doc.text(`${sc.label}: $${safe(sc.price).toFixed(0)} (${safe(sc.upside) > 0 ? '+' : ''}${safe(sc.upside).toFixed(1)}%) — ${sc.probability}% probability`, margin, y);
+                    sc.label === 'Bull Case' ? 129 : sc.label === 'Bear Case' ? 68 : 100,
+                );
+                doc.text(
+                    `${sc.label}: $${safe(sc.price).toFixed(0)} (${safe(sc.upside) > 0 ? '+' : ''}${safe(sc.upside).toFixed(1)}%) — ${sc.probability}% probability`,
+                    margin,
+                    y,
+                );
                 y += 4;
                 doc.setFont('helvetica', 'normal');
                 doc.setTextColor(60, 60, 60);
@@ -373,8 +390,14 @@ export default function PDFExport() {
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(60, 60, 60);
             const healthRows = [
-                [result.financialHealth.altmanIsEstimated ? 'Est. Altman Z-Score' : 'Altman Z-Score', `${safe(result.financialHealth.altmanZScore).toFixed(2)} (${result.financialHealth.altmanZone})`],
-                [result.financialHealth.piotroskiIsEstimated ? 'Est. Piotroski Score' : 'Piotroski F-Score', `${result.financialHealth.piotroskiFScore}/9 (${result.financialHealth.piotroskiRating})`],
+                [
+                    result.financialHealth.altmanIsEstimated ? 'Est. Altman Z-Score' : 'Altman Z-Score',
+                    `${safe(result.financialHealth.altmanZScore).toFixed(2)} (${result.financialHealth.altmanZone})`,
+                ],
+                [
+                    result.financialHealth.piotroskiIsEstimated ? 'Est. Piotroski Score' : 'Piotroski F-Score',
+                    `${result.financialHealth.piotroskiFScore}/9 (${result.financialHealth.piotroskiRating})`,
+                ],
                 ['Current Ratio', safe(result.financialHealth.currentRatio).toFixed(2)],
                 ['Quick Ratio', safe(result.financialHealth.quickRatio).toFixed(2)],
                 ['Interest Coverage', `${safe(result.financialHealth.interestCoverage).toFixed(1)}x`],
@@ -396,11 +419,19 @@ export default function PDFExport() {
         if (result.valuationModels) {
             addSection('Valuation Models');
             doc.setFontSize(9);
-            for (const [name, model] of [['DCF', result.valuationModels.dcf], ['Graham Number', result.valuationModels.graham], ['Peter Lynch', result.valuationModels.lynch]] as const) {
+            for (const [name, model] of [
+                ['DCF', result.valuationModels.dcf],
+                ['Graham Number', result.valuationModels.graham],
+                ['Peter Lynch', result.valuationModels.lynch],
+            ] as const) {
                 checkPageBreak(10);
                 doc.setFont('helvetica', 'bold');
                 doc.setTextColor(0, 0, 0);
-                doc.text(`${name}: $${safe(model.value).toFixed(0)} (${safe(model.upside) > 0 ? '+' : ''}${safe(model.upside).toFixed(1)}%)`, margin, y);
+                doc.text(
+                    `${name}: $${safe(model.value).toFixed(0)} (${safe(model.upside) > 0 ? '+' : ''}${safe(model.upside).toFixed(1)}%)`,
+                    margin,
+                    y,
+                );
                 y += 4;
                 doc.setFont('helvetica', 'normal');
                 doc.setTextColor(100, 100, 100);
@@ -409,7 +440,11 @@ export default function PDFExport() {
             }
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(14, 165, 233);
-            doc.text(`Consensus Fair Value: $${safe(result.valuationModels.consensus.value).toFixed(0)} (${safe(result.valuationModels.consensus.upside) > 0 ? '+' : ''}${safe(result.valuationModels.consensus.upside).toFixed(1)}%)`, margin, y);
+            doc.text(
+                `Consensus Fair Value: $${safe(result.valuationModels.consensus.value).toFixed(0)} (${safe(result.valuationModels.consensus.upside) > 0 ? '+' : ''}${safe(result.valuationModels.consensus.upside).toFixed(1)}%)`,
+                margin,
+                y,
+            );
             y += 6;
         }
 
@@ -419,7 +454,11 @@ export default function PDFExport() {
             doc.setFontSize(9);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(0, 0, 0);
-            doc.text(`Rating: ${result.competitiveMoat.rating} (${result.competitiveMoat.score}/100) — Durability: ${result.competitiveMoat.durability}`, margin, y);
+            doc.text(
+                `Rating: ${result.competitiveMoat.rating} (${result.competitiveMoat.score}/100) — Durability: ${result.competitiveMoat.durability}`,
+                margin,
+                y,
+            );
             y += 6;
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(60, 60, 60);
@@ -500,7 +539,11 @@ export default function PDFExport() {
             y += 5;
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(60, 60, 60);
-            doc.text(`7D: ${result.momentum.shortTerm.performance > 0 ? '+' : ''}${result.momentum.shortTerm.performance}% | 30D: ${result.momentum.mediumTerm.performance > 0 ? '+' : ''}${result.momentum.mediumTerm.performance}% | 90D: ${result.momentum.longTerm.performance > 0 ? '+' : ''}${result.momentum.longTerm.performance}%`, margin, y);
+            doc.text(
+                `7D: ${result.momentum.shortTerm.performance > 0 ? '+' : ''}${result.momentum.shortTerm.performance}% | 30D: ${result.momentum.mediumTerm.performance > 0 ? '+' : ''}${result.momentum.mediumTerm.performance}% | 90D: ${result.momentum.longTerm.performance > 0 ? '+' : ''}${result.momentum.longTerm.performance}%`,
+                margin,
+                y,
+            );
             y += 6;
         }
 
@@ -513,7 +556,11 @@ export default function PDFExport() {
             y += 5;
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(60, 60, 60);
-            doc.text(`Max Downside: -${result.riskReward.maxDrawdownEstimate}% | Upside: +${result.riskReward.upsidePotential}%`, margin, y);
+            doc.text(
+                `Max Downside: -${result.riskReward.maxDrawdownEstimate}% | Upside: +${result.riskReward.upsidePotential}%`,
+                margin,
+                y,
+            );
             y += 6;
         }
 
@@ -523,7 +570,11 @@ export default function PDFExport() {
             doc.setFontSize(9);
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(60, 60, 60);
-            doc.text(`Yield: ${result.dividendAnalysis.yield}% | Annual: $${result.dividendAnalysis.annualDividend} | Payout: ${result.dividendAnalysis.payoutRatio}% | Safety: ${result.dividendAnalysis.safety}`, margin, y);
+            doc.text(
+                `Yield: ${result.dividendAnalysis.yield}% | Annual: $${result.dividendAnalysis.annualDividend} | Payout: ${result.dividendAnalysis.payoutRatio}% | Safety: ${result.dividendAnalysis.safety}`,
+                margin,
+                y,
+            );
             y += 6;
         }
 
@@ -538,9 +589,11 @@ export default function PDFExport() {
             doc.setFont('helvetica', 'normal');
             for (const sig of [result.technicals.rsi, result.technicals.macd, result.technicals.sma50, result.technicals.sma200]) {
                 checkPageBreak(8);
-                doc.setTextColor(sig.signal === 'bullish' ? 16 : sig.signal === 'bearish' ? 239 : 100,
+                doc.setTextColor(
+                    sig.signal === 'bullish' ? 16 : sig.signal === 'bearish' ? 239 : 100,
                     sig.signal === 'bullish' ? 185 : sig.signal === 'bearish' ? 68 : 100,
-                    sig.signal === 'bullish' ? 129 : sig.signal === 'bearish' ? 68 : 100);
+                    sig.signal === 'bullish' ? 129 : sig.signal === 'bearish' ? 68 : 100,
+                );
                 doc.setFont('helvetica', 'bold');
                 doc.text(`${sig.name}: ${sig.value} (${sig.signal})`, margin, y);
                 y += 4;
@@ -558,7 +611,11 @@ export default function PDFExport() {
             doc.setFontSize(9);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(0, 0, 0);
-            doc.text(`Agreement: ${result.aiConsensus.agreementScore}% | Gemini: ${result.aiConsensus.geminiVerdict} | ${result.aiConsensus.secondaryModel}: ${result.aiConsensus.secondaryVerdict}`, margin, y);
+            doc.text(
+                `Agreement: ${result.aiConsensus.agreementScore}% | Gemini: ${result.aiConsensus.geminiVerdict} | ${result.aiConsensus.secondaryModel}: ${result.aiConsensus.secondaryVerdict}`,
+                margin,
+                y,
+            );
             y += 5;
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(60, 60, 60);
@@ -573,7 +630,11 @@ export default function PDFExport() {
             doc.setFontSize(9);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(0, 0, 0);
-            doc.text(`Net Sentiment: ${result.insiderActivity.netSentiment} | Buys: ${formatNum(result.insiderActivity.totalBuyValue)} | Sells: ${formatNum(result.insiderActivity.totalSellValue)}`, margin, y);
+            doc.text(
+                `Net Sentiment: ${result.insiderActivity.netSentiment} | Buys: ${formatNum(result.insiderActivity.totalBuyValue)} | Sells: ${formatNum(result.insiderActivity.totalSellValue)}`,
+                margin,
+                y,
+            );
             y += 6;
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(60, 60, 60);
@@ -585,7 +646,6 @@ export default function PDFExport() {
             y += 2;
         }
 
-
         // ── Final Disclaimer ──────────────────────────────────────
         checkPageBreak(30);
         y += 6;
@@ -595,7 +655,8 @@ export default function PDFExport() {
         doc.setFontSize(7);
         doc.setTextColor(0, 0, 0);
 
-        const disclaimerText = 'DISCLAIMER: This is not financial advice. This report is for educational and informational purposes only. Always conduct your own research and consult with a qualified financial advisor before making investment decisions.';
+        const disclaimerText =
+            'DISCLAIMER: This is not financial advice. This report is for educational and informational purposes only. Always conduct your own research and consult with a qualified financial advisor before making investment decisions.';
         const disclaimerLines = doc.splitTextToSize(disclaimerText, contentWidth - 8);
         const boxHeight = Math.max(14, disclaimerLines.length * 4 + 6);
 

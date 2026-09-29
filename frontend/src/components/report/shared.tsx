@@ -19,26 +19,33 @@ export const SIGNAL = {
 } as const;
 
 export const GRADE_COLORS: Record<string, string> = {
-    'A+': 'text-emerald', 'A': 'text-emerald', 'A-': 'text-emerald-light',
-    'B+': 'text-sky', 'B': 'text-sky', 'B-': 'text-sky-light',
-    'C+': 'text-gold', 'C': 'text-gold', 'C-': 'text-gold-light',
-    'D': 'text-rose-light', 'F': 'text-rose',
+    'A+': 'text-emerald',
+    A: 'text-emerald',
+    'A-': 'text-emerald-light',
+    'B+': 'text-sky',
+    B: 'text-sky',
+    'B-': 'text-sky-light',
+    'C+': 'text-gold',
+    C: 'text-gold',
+    'C-': 'text-gold-light',
+    D: 'text-rose-light',
+    F: 'text-rose',
 };
 
 export const PIE_COLORS = ['#34D399', '#FB7185', '#94A3B8'];
 export const REVENUE_COLORS = ['#818CF8', '#38BDF8', '#34D399', '#F59E0B', '#FB7185'];
 
 export const RESEARCH_CATEGORIES: Record<keyof ResearchSources, { icon: string; label: string }> = {
-    financialData:       { icon: '📈', label: 'Financial Data (Finnhub)' },
-    technicalAnalysis:   { icon: '📊', label: 'Technical Analysis Sources' },
-    secFilings:          { icon: '📋', label: 'SEC Filings & Regulatory' },
+    financialData: { icon: '📈', label: 'Financial Data (Finnhub)' },
+    technicalAnalysis: { icon: '📊', label: 'Technical Analysis Sources' },
+    secFilings: { icon: '📋', label: 'SEC Filings & Regulatory' },
     financialStatements: { icon: '💰', label: 'Financial Statements' },
-    companyResearch:     { icon: '🏢', label: 'Company Research' },
-    newsSentiment:       { icon: '📰', label: 'News & Sentiment Sources' },
-    analystData:         { icon: '🎯', label: 'Analyst & Institutional Data' },
+    companyResearch: { icon: '🏢', label: 'Company Research' },
+    newsSentiment: { icon: '📰', label: 'News & Sentiment Sources' },
+    analystData: { icon: '🎯', label: 'Analyst & Institutional Data' },
     valuationReferences: { icon: '🧮', label: 'Valuation Model References' },
-    earningsDividends:   { icon: '🔬', label: 'Earnings & Dividends' },
-    riskCompliance:      { icon: '🛡️', label: 'Risk & Compliance' },
+    earningsDividends: { icon: '🔬', label: 'Earnings & Dividends' },
+    riskCompliance: { icon: '🛡️', label: 'Risk & Compliance' },
 };
 
 // ─── Utility Functions ──────────────────────────────────────────────
@@ -75,8 +82,18 @@ export function ScoreBar({ label, value, color }: { label: string; value: number
     );
 }
 
-export function SectionCard({ title, icon, delay, children, premium }: {
-    title: string; icon: string; delay?: string; children: ReactNode; premium?: boolean;
+export function SectionCard({
+    title,
+    icon,
+    delay,
+    children,
+    premium,
+}: {
+    title: string;
+    icon: string;
+    delay?: string;
+    children: ReactNode;
+    premium?: boolean;
 }) {
     return (
         <div className={`${premium ? 'card-premium' : 'card'} p-5 animate-slide-up`} style={delay ? { animationDelay: delay } : undefined}>

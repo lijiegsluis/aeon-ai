@@ -20,9 +20,16 @@ const SUBS = [
 type Sub = (typeof SUBS)[number][0];
 
 const VOTE_CLS: Record<string, string> = {
-    'STRONG BUY': 'text-emerald', BUY: 'text-emerald', BEAT: 'text-emerald',
-    HOLD: 'text-gold-light', NEUTRAL: 'text-gold-light', MEET: 'text-gold-light',
-    SELL: 'text-rose', 'STRONG SELL': 'text-rose', AVOID: 'text-rose', MISS: 'text-rose',
+    'STRONG BUY': 'text-emerald',
+    BUY: 'text-emerald',
+    BEAT: 'text-emerald',
+    HOLD: 'text-gold-light',
+    NEUTRAL: 'text-gold-light',
+    MEET: 'text-gold-light',
+    SELL: 'text-rose',
+    'STRONG SELL': 'text-rose',
+    AVOID: 'text-rose',
+    MISS: 'text-rose',
 };
 const clsFor = (v?: string) => VOTE_CLS[(v ?? '').toUpperCase()] ?? 'text-white';
 const num = (v: unknown, d = 2) => (typeof v === 'number' ? (Number.isInteger(v) ? String(v) : v.toFixed(d)) : '—');
@@ -53,15 +60,21 @@ function useFra<T>(path: string, ticker: string) {
     const [busy, setBusy] = useState(false);
     const [err, setErr] = useState('');
     const load = async () => {
-        setBusy(true); setErr(''); setData(null);
+        setBusy(true);
+        setErr('');
+        setData(null);
         try {
             const r = await fetch(`${FRA}${path}`);
             if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || `HTTP ${r.status}`);
             setData(await r.json());
-        } catch (e) { setErr(`Deep Research engine unreachable — ${e}`); }
+        } catch (e) {
+            setErr(`Deep Research engine unreachable — ${e}`);
+        }
         setBusy(false);
     };
-    useEffect(() => { load(); /* eslint-disable-next-line */ }, [path, ticker]);
+    useEffect(() => {
+        load(); /* eslint-disable-next-line */
+    }, [path, ticker]);
     return { data, busy, err, reload: load };
 }
 
@@ -78,7 +91,9 @@ function DimCard({ title, icon, data }: { title: string; icon: string; data: Rec
     const rows = flatten(data).slice(0, 18);
     return (
         <div className="card p-5">
-            <h3 className="section-heading mb-3">{icon} {title}</h3>
+            <h3 className="section-heading mb-3">
+                {icon} {title}
+            </h3>
             <div className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
                 {rows.map(([k, v]) => (
                     <div key={k} className="flex items-baseline justify-between gap-3 border-b border-white/[0.03] pb-1.5">
@@ -92,19 +107,36 @@ function DimCard({ title, icon, data }: { title: string; icon: string; data: Rec
 }
 
 /* ── Overview ──────────────────────────────────────────────────── */
-type Analysis = { current_price: number; recommendation: string; confidence: number; summary: string;
-    technical: Record<string, unknown> | null; fundamental: Record<string, unknown> | null;
-    sentiment: Record<string, unknown> | null; risk: Record<string, unknown> | null; execution_time_seconds: number };
+type Analysis = {
+    current_price: number;
+    recommendation: string;
+    confidence: number;
+    summary: string;
+    technical: Record<string, unknown> | null;
+    fundamental: Record<string, unknown> | null;
+    sentiment: Record<string, unknown> | null;
+    risk: Record<string, unknown> | null;
+    execution_time_seconds: number;
+};
 
 function OverviewSub({ ticker }: { ticker: string }) {
     // /analyze is a POST — dedicated effect rather than the GET hook.
     const [d, setD] = useState<Analysis | null>(null);
-    const [b, setB] = useState(false); const [e, setE] = useState('');
+    const [b, setB] = useState(false);
+    const [e, setE] = useState('');
     useEffect(() => {
-        setB(true); setE(''); setD(null);
-        fetch(`${FRA}/analyze`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ symbol: ticker, analysis_type: 'comprehensive' }) })
-            .then(async (r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); setD(await r.json()); })
+        setB(true);
+        setE('');
+        setD(null);
+        fetch(`${FRA}/analyze`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ symbol: ticker, analysis_type: 'comprehensive' }),
+        })
+            .then(async (r) => {
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                setD(await r.json());
+            })
             .catch((x) => setE(`Deep Research engine unreachable — ${x}`))
             .finally(() => setB(false));
     }, [ticker]);
@@ -136,19 +168,27 @@ function OverviewSub({ ticker }: { ticker: string }) {
 }
 
 /* ── Peers ─────────────────────────────────────────────────────── */
-type Peers = { target: string; peer_group: string[];
+type Peers = {
+    target: string;
+    peer_group: string[];
     metrics: Record<string, Record<string, number>>;
-    strengths: string[]; weaknesses: string[] };
+    strengths: string[];
+    weaknesses: string[];
+};
 function PeersSub({ ticker }: { ticker: string }) {
     const { data, busy, err } = useFra<Peers>(`/peers/${ticker}`, ticker);
     if (err) return <ErrorNote msg={err} />;
     if (busy || !data) return <Loading label={`Comparing ${ticker} against its peer group…`} />;
     const cols = [data.target, ...data.peer_group];
     const metricRows: [string, string, (v: number) => string][] = [
-        ['Price', 'price', (v) => `$${num(v)}`], ['Market Cap', 'market_cap', cap],
-        ['P/E', 'pe_ratio', (v) => num(v, 1)], ['Fwd P/E', 'forward_pe', (v) => num(v, 1)],
-        ['PEG', 'peg_ratio', (v) => num(v, 2)], ['P/B', 'pb_ratio', (v) => num(v, 1)],
-        ['P/S', 'ps_ratio', (v) => num(v, 1)], ['Profit margin', 'profit_margin', (v) => pct(v * 100)],
+        ['Price', 'price', (v) => `$${num(v)}`],
+        ['Market Cap', 'market_cap', cap],
+        ['P/E', 'pe_ratio', (v) => num(v, 1)],
+        ['Fwd P/E', 'forward_pe', (v) => num(v, 1)],
+        ['PEG', 'peg_ratio', (v) => num(v, 2)],
+        ['P/B', 'pb_ratio', (v) => num(v, 1)],
+        ['P/S', 'ps_ratio', (v) => num(v, 1)],
+        ['Profit margin', 'profit_margin', (v) => pct(v * 100)],
         ['Rev growth', 'revenue_growth', (v) => pct(v * 100)],
     ];
     return (
@@ -159,7 +199,11 @@ function PeersSub({ ticker }: { ticker: string }) {
                     <thead>
                         <tr className="border-b border-white/[0.06] text-left text-[10px] uppercase tracking-wider text-white/40">
                             <th className="px-2 py-2">Metric</th>
-                            {cols.map((c) => <th key={c} className={`px-2 py-2 ${c === data.target ? 'text-accent' : ''}`}>{c}</th>)}
+                            {cols.map((c) => (
+                                <th key={c} className={`px-2 py-2 ${c === data.target ? 'text-accent' : ''}`}>
+                                    {c}
+                                </th>
+                            ))}
                         </tr>
                     </thead>
                     <tbody>
@@ -180,13 +224,21 @@ function PeersSub({ ticker }: { ticker: string }) {
                 {data.strengths?.length > 0 && (
                     <div className="card-cyan p-4">
                         <p className="stat-label mb-2 text-emerald">Relative strengths</p>
-                        <ul className="space-y-1 text-sm text-white/75">{data.strengths.map((s, i) => <li key={i}>• {s}</li>)}</ul>
+                        <ul className="space-y-1 text-sm text-white/75">
+                            {data.strengths.map((s, i) => (
+                                <li key={i}>• {s}</li>
+                            ))}
+                        </ul>
                     </div>
                 )}
                 {data.weaknesses?.length > 0 && (
                     <div className="card p-4">
                         <p className="stat-label mb-2 text-rose">Relative weaknesses</p>
-                        <ul className="space-y-1 text-sm text-white/75">{data.weaknesses.map((s, i) => <li key={i}>• {s}</li>)}</ul>
+                        <ul className="space-y-1 text-sm text-white/75">
+                            {data.weaknesses.map((s, i) => (
+                                <li key={i}>• {s}</li>
+                            ))}
+                        </ul>
                     </div>
                 )}
             </div>
@@ -195,9 +247,13 @@ function PeersSub({ ticker }: { ticker: string }) {
 }
 
 /* ── Earnings ──────────────────────────────────────────────────── */
-type Earnings = { name: string;
+type Earnings = {
+    name: string;
     last_4_quarters: { quarter: string; eps_actual: number; eps_estimate: number; eps_surprise_pct: number; verdict: string }[];
-    next_earnings?: Record<string, unknown>; earnings_quality?: Record<string, unknown>; qualitative_assessment?: string };
+    next_earnings?: Record<string, unknown>;
+    earnings_quality?: Record<string, unknown>;
+    qualitative_assessment?: string;
+};
 function EarningsSub({ ticker }: { ticker: string }) {
     const { data, busy, err } = useFra<Earnings>(`/earnings/${ticker}`, ticker);
     if (err) return <ErrorNote msg={err} />;
@@ -210,9 +266,13 @@ function EarningsSub({ ticker }: { ticker: string }) {
                     {data.last_4_quarters?.map((q) => (
                         <div key={q.quarter} className="card-glass p-4">
                             <p className="stat-label mb-1">{q.quarter}</p>
-                            <p className="font-mono text-lg font-bold text-white">${num(q.eps_actual)} <span className="text-xs text-white/40">EPS</span></p>
+                            <p className="font-mono text-lg font-bold text-white">
+                                ${num(q.eps_actual)} <span className="text-xs text-white/40">EPS</span>
+                            </p>
                             <p className="text-xs text-white/40">est ${num(q.eps_estimate)}</p>
-                            <p className={`mt-1 font-semibold ${clsFor(q.verdict)}`}>{q.verdict} {pct(q.eps_surprise_pct)}</p>
+                            <p className={`mt-1 font-semibold ${clsFor(q.verdict)}`}>
+                                {q.verdict} {pct(q.eps_surprise_pct)}
+                            </p>
                         </div>
                     ))}
                 </div>
@@ -232,9 +292,13 @@ function EarningsSub({ ticker }: { ticker: string }) {
 }
 
 /* ── Performance ───────────────────────────────────────────────── */
-type Perf = { sector: string; absolute_returns: Record<string, number>;
-    benchmark_comparison?: Record<string, unknown>; risk_adjusted_metrics?: Record<string, unknown>;
-    drawdown_analysis?: Record<string, unknown> };
+type Perf = {
+    sector: string;
+    absolute_returns: Record<string, number>;
+    benchmark_comparison?: Record<string, unknown>;
+    risk_adjusted_metrics?: Record<string, unknown>;
+    drawdown_analysis?: Record<string, unknown>;
+};
 function PerformanceSub({ ticker }: { ticker: string }) {
     const { data, busy, err } = useFra<Perf>(`/performance/${ticker}`, ticker);
     if (err) return <ErrorNote msg={err} />;
@@ -245,14 +309,18 @@ function PerformanceSub({ ticker }: { ticker: string }) {
             <div className="card p-5">
                 <h3 className="section-heading mb-3">📈 Total returns · {data.sector}</h3>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                    {order.filter((k) => data.absolute_returns?.[k] != null).map((k) => (
-                        <div key={k} className="card-glass p-3 text-center">
-                            <p className="stat-label">{k.replace('_', ' ')}</p>
-                            <p className={`font-mono text-lg font-bold ${data.absolute_returns[k] >= 0 ? 'text-emerald' : 'text-rose'}`}>
-                                {pct(data.absolute_returns[k])}
-                            </p>
-                        </div>
-                    ))}
+                    {order
+                        .filter((k) => data.absolute_returns?.[k] != null)
+                        .map((k) => (
+                            <div key={k} className="card-glass p-3 text-center">
+                                <p className="stat-label">{k.replace('_', ' ')}</p>
+                                <p
+                                    className={`font-mono text-lg font-bold ${data.absolute_returns[k] >= 0 ? 'text-emerald' : 'text-rose'}`}
+                                >
+                                    {pct(data.absolute_returns[k])}
+                                </p>
+                            </div>
+                        ))}
                 </div>
             </div>
             <div className="grid gap-4 lg:grid-cols-2">
@@ -265,9 +333,13 @@ function PerformanceSub({ ticker }: { ticker: string }) {
 }
 
 /* ── Smart Money (insiders) ────────────────────────────────────── */
-type Smart = { smart_money_signal?: { score?: number; assessment?: string } | string;
-    insider_activity?: { transactions?: { name: string; title: string; transaction_type: string; shares: number; value: number | null; date: string }[] };
-    institutional_activity?: Record<string, unknown> };
+type Smart = {
+    smart_money_signal?: { score?: number; assessment?: string } | string;
+    insider_activity?: {
+        transactions?: { name: string; title: string; transaction_type: string; shares: number; value: number | null; date: string }[];
+    };
+    institutional_activity?: Record<string, unknown>;
+};
 function InsidersSub({ ticker }: { ticker: string }) {
     const { data, busy, err } = useFra<Smart>(`/insiders/${ticker}`, ticker);
     if (err) return <ErrorNote msg={err} />;
@@ -287,20 +359,27 @@ function InsidersSub({ ticker }: { ticker: string }) {
                         <p className="stat-label text-accent">Smart money signal</p>
                         {sigScore != null && <span className="font-mono text-sm text-white/50">score {sigScore}/100</span>}
                     </div>
-                    <p className={`mt-1 font-display text-xl font-bold ${bullish ? 'text-emerald' : bearish ? 'text-rose' : 'text-gold-light'}`}>
+                    <p
+                        className={`mt-1 font-display text-xl font-bold ${bullish ? 'text-emerald' : bearish ? 'text-rose' : 'text-gold-light'}`}
+                    >
                         {sigText}
                     </p>
                 </div>
             )}
             <div className="card p-5 overflow-x-auto">
                 <h3 className="section-heading mb-3">🏦 Insider transactions (90d)</h3>
-                {txns.length === 0 ? <p className="text-sm text-white/40">No insider transactions in the window.</p> : (
+                {txns.length === 0 ? (
+                    <p className="text-sm text-white/40">No insider transactions in the window.</p>
+                ) : (
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="border-b border-white/[0.06] text-left text-[10px] uppercase tracking-wider text-white/40">
-                                <th className="px-2 py-2">Insider</th><th className="px-2 py-2">Title</th>
-                                <th className="px-2 py-2">Type</th><th className="px-2 py-2">Shares</th>
-                                <th className="px-2 py-2">Value</th><th className="px-2 py-2">Date</th>
+                                <th className="px-2 py-2">Insider</th>
+                                <th className="px-2 py-2">Title</th>
+                                <th className="px-2 py-2">Type</th>
+                                <th className="px-2 py-2">Shares</th>
+                                <th className="px-2 py-2">Value</th>
+                                <th className="px-2 py-2">Date</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -308,7 +387,11 @@ function InsidersSub({ ticker }: { ticker: string }) {
                                 <tr key={i} className="border-b border-white/[0.03]">
                                     <td className="px-2 py-1.5 text-white/80">{t.name}</td>
                                     <td className="px-2 py-1.5 text-white/50">{t.title}</td>
-                                    <td className={`px-2 py-1.5 font-semibold ${t.transaction_type === 'Buy' ? 'text-emerald' : 'text-rose'}`}>{t.transaction_type}</td>
+                                    <td
+                                        className={`px-2 py-1.5 font-semibold ${t.transaction_type === 'Buy' ? 'text-emerald' : 'text-rose'}`}
+                                    >
+                                        {t.transaction_type}
+                                    </td>
                                     <td className="px-2 py-1.5 font-mono">{t.shares?.toLocaleString?.() ?? t.shares}</td>
                                     <td className="px-2 py-1.5 font-mono text-white/60">{t.value ? cap(t.value) : '—'}</td>
                                     <td className="px-2 py-1.5 font-mono text-white/40">{t.date}</td>
@@ -334,9 +417,13 @@ export default function DeepResearch() {
             </div>
             <div className="flex flex-wrap gap-1 border-b border-white/[0.06] pb-2">
                 {SUBS.map(([id, label]) => (
-                    <button key={id} onClick={() => setSub(id)}
+                    <button
+                        key={id}
+                        onClick={() => setSub(id)}
                         className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-                            sub === id ? 'bg-accent/10 text-accent' : 'text-white/40 hover:text-white/70'}`}>
+                            sub === id ? 'bg-accent/10 text-accent' : 'text-white/40 hover:text-white/70'
+                        }`}
+                    >
                         {label}
                     </button>
                 ))}

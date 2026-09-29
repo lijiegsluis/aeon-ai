@@ -159,8 +159,8 @@ export interface FinancialHealth {
 // ─── Aeon Score™ (Letter Grade) ───────────────────────────────────
 export interface AeonScore {
     grade: 'A+' | 'A' | 'A-' | 'B+' | 'B' | 'B-' | 'C+' | 'C' | 'C-' | 'D' | 'F';
-    numericScore: number;      // 0-100
-    confidence: number;        // 0-100
+    numericScore: number; // 0-100
+    confidence: number; // 0-100
     verdict: string;
     strengths: string[];
     weaknesses: string[];
@@ -171,8 +171,8 @@ export interface AeonScore {
 export interface ScenarioTarget {
     label: string;
     price: number;
-    upside: number;            // % from current
-    probability: number;       // %
+    upside: number; // % from current
+    probability: number; // %
     rationale: string;
 }
 
@@ -189,7 +189,7 @@ export interface RevenueSegment {
     name: string;
     revenue: number;
     percent: number;
-    growth: number;            // YoY %
+    growth: number; // YoY %
 }
 
 export interface RevenueBreakdown {
@@ -201,20 +201,20 @@ export interface RevenueBreakdown {
 
 // ─── Momentum Score ────────────────────────────────────────────────
 export interface MomentumData {
-    score: number;             // 0-100
+    score: number; // 0-100
     trend: 'strong-up' | 'up' | 'flat' | 'down' | 'strong-down';
     shortTerm: { period: string; performance: number };
     mediumTerm: { period: string; performance: number };
     longTerm: { period: string; performance: number };
-    relativeStrength: number;  // vs S&P 500
+    relativeStrength: number; // vs S&P 500
     interpretation: string;
 }
 
 // ─── Value vs Growth ───────────────────────────────────────────────
 export interface ValueGrowthProfile {
     classification: 'Deep Value' | 'Value' | 'Blend' | 'Growth' | 'High Growth';
-    valueScore: number;        // 0-100
-    growthScore: number;       // 0-100
+    valueScore: number; // 0-100
+    growthScore: number; // 0-100
     metrics: {
         pegRatio: number;
         priceToBook: number;
@@ -228,7 +228,7 @@ export interface ValueGrowthProfile {
 // ─── Competitive Moat ──────────────────────────────────────────────
 export interface CompetitiveMoat {
     rating: 'Wide' | 'Narrow' | 'None';
-    score: number;             // 0-100
+    score: number; // 0-100
     sources: { name: string; strength: 'strong' | 'moderate' | 'weak'; description: string }[];
     durability: 'high' | 'medium' | 'low';
     interpretation: string;
@@ -236,12 +236,12 @@ export interface CompetitiveMoat {
 
 // ─── Risk-Reward ───────────────────────────────────────────────────
 export interface RiskRewardProfile {
-    riskLevel: number;         // 1-10
-    rewardPotential: number;   // 1-10
-    ratio: number;             // reward/risk
+    riskLevel: number; // 1-10
+    rewardPotential: number; // 1-10
+    ratio: number; // reward/risk
     rating: 'Excellent' | 'Good' | 'Fair' | 'Poor';
     maxDrawdownEstimate: number; // % potential loss
-    upsidePotential: number;  // % potential gain
+    upsidePotential: number; // % potential gain
     interpretation: string;
 }
 
@@ -250,7 +250,7 @@ export interface DividendAnalysis {
     yield: number;
     annualDividend: number;
     payoutRatio: number;
-    growthRate5Y: number;      // 5-year CAGR
+    growthRate5Y: number; // 5-year CAGR
     yearsOfGrowth: number;
     exDividendDate: string | null;
     frequency: 'quarterly' | 'monthly' | 'annually' | 'semi-annually';
@@ -362,18 +362,27 @@ export interface ValuationModels {
 // ─── Extended Technicals (Computed) ───────────────────────────────
 export interface ExtendedTechnicals {
     bollingerBands: {
-        upper: number; middle: number; lower: number;
-        bandwidth: number; signal: 'overbought' | 'oversold' | 'neutral';
+        upper: number;
+        middle: number;
+        lower: number;
+        bandwidth: number;
+        signal: 'overbought' | 'oversold' | 'neutral';
     };
     stochastic: { k: number; d: number; signal: 'overbought' | 'oversold' | 'neutral' };
     atr: number;
     supportResistance: {
-        resistance2: number; resistance1: number; pivot: number;
-        support1: number; support2: number;
+        resistance2: number;
+        resistance1: number;
+        pivot: number;
+        support1: number;
+        support2: number;
     };
     fibonacci: {
-        level236: number; level382: number; level500: number;
-        level618: number; level786: number;
+        level236: number;
+        level382: number;
+        level500: number;
+        level618: number;
+        level786: number;
     };
     historicalVolatility: number;
     vwap: number;

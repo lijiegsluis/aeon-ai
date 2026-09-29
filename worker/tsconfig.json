@@ -2,12 +2,8 @@
     "compilerOptions": {
         "target": "ES2022",
         "module": "ES2022",
-        "lib": [
-            "ES2022"
-        ],
-        "types": [
-            "@cloudflare/workers-types"
-        ],
+        "lib": ["ES2022"],
+        "types": ["@cloudflare/workers-types"],
         "moduleResolution": "bundler",
         "strict": true,
         "esModuleInterop": true,
@@ -18,8 +14,5 @@
         "noEmit": true,
         "jsx": "react-jsx"
     },
-    "include": [
-        "src/**/*",
-        "../shared/**/*"
-    ]
+    "include": ["src/**/*", "../shared/**/*"]
 }

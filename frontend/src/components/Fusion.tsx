@@ -9,30 +9,47 @@ import { useEffect, useRef, useState } from 'react';
 import { ErrorNote, humanizeErr, ProgressBar, useVaultKey, VaultKeyStatus } from './Terminal';
 import { useStore } from '../store';
 import { jget, jpost } from '../utils/api';
+import { ANALYTICS_URL } from '../config';
 
-const AEON = 'http://127.0.0.1:8000';
+const AEON = ANALYTICS_URL;
 
 type Ensemble = {
-    price: number; consensus: number; consensusUpside: number;
-    disagreementIndex: number; readout: string;
+    price: number;
+    consensus: number;
+    consensusUpside: number;
+    disagreementIndex: number;
+    readout: string;
     models: Record<string, { value: number; philosophy: string; upside: number }>;
 };
 type Integrity = {
-    sources: Record<string, number>; spreadBps?: number;
-    verified: boolean | null; note: string;
+    sources: Record<string, number>;
+    spreadBps?: number;
+    verified: boolean | null;
+    note: string;
 };
 type CouncilJob = {
-    status: 'running' | 'done' | 'error'; phase?: string; progress?: number; error?: string;
+    status: 'running' | 'done' | 'error';
+    phase?: string;
+    progress?: number;
+    error?: string;
     seats?: { seat: string; label: string; text: string; vote: string }[];
-    tally?: Record<string, number>; agreement?: number;
-    verdict?: string; chairRuling?: string;
+    tally?: Record<string, number>;
+    agreement?: number;
+    verdict?: string;
+    chairRuling?: string;
 };
 
 const MODEL_ICONS: Record<string, string> = {
-    dcf: '🌊', graham: '📚', lynch: '🛒', analysts: '🏦', montecarlo: '🎲',
+    dcf: '🌊',
+    graham: '📚',
+    lynch: '🛒',
+    analysts: '🏦',
+    montecarlo: '🎲',
 };
 const VOTE_CLS: Record<string, string> = {
-    BUY: 'text-emerald', HOLD: 'text-gold-light', SELL: 'text-rose',
+    BUY: 'text-emerald',
+    HOLD: 'text-gold-light',
+    SELL: 'text-rose',
 };
 
 export default function FusionTab() {
@@ -49,10 +66,15 @@ export default function FusionTab() {
     const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
     useEffect(() => {
-        setEns(null); setInteg(null); setErr('');
-        jget<Ensemble>(`${AEON}/fusion/valuation/${ticker}`).then(setEns)
+        setEns(null);
+        setInteg(null);
+        setErr('');
+        jget<Ensemble>(`${AEON}/fusion/valuation/${ticker}`)
+            .then(setEns)
             .catch((e) => setErr(String(e)));
-        jget<Integrity>(`${AEON}/fusion/quote/${ticker}`).then(setInteg).catch(() => {});
+        jget<Integrity>(`${AEON}/fusion/quote/${ticker}`)
+            .then(setInteg)
+            .catch(() => {});
     }, [ticker]);
 
     const poll = (jobId: string) => {
@@ -66,21 +88,30 @@ export default function FusionTab() {
                     setBusy(false);
                     localStorage.removeItem('aeonnimbus_council_job');
                 }
-            } catch { /* keep polling */ }
+            } catch {
+                /* keep polling */
+            }
         }, 4000);
     };
 
     const convene = async () => {
-        if (!key) { setErr('The council needs a Gemini key — every seat is a real LLM run.'); return; }
-        setBusy(true); setJob(null); setErr('');
+        if (!key) {
+            setErr('The council needs a Gemini key — every seat is a real LLM run.');
+            return;
+        }
+        setBusy(true);
+        setJob(null);
+        setErr('');
         try {
-            const { jobId } = await jpost<{ jobId: string }>(`${AEON}/fusion/council`,
-                { ticker, geminiKey: key, includeDebate: deep });
+            const { jobId } = await jpost<{ jobId: string }>(`${AEON}/fusion/council`, { ticker, geminiKey: key, includeDebate: deep });
             // Stored with its ticker (not just the jobId) so other tabs — e.g.
             // Alpha Digest — can tell whether a cached job matches their ticker.
             localStorage.setItem('aeonnimbus_council_job', JSON.stringify({ jobId, ticker }));
             poll(jobId);
-        } catch (e) { setErr(String(e)); setBusy(false); }
+        } catch (e) {
+            setErr(String(e));
+            setBusy(false);
+        }
     };
 
     // Resume a council that was convened before a tab switch or reload
@@ -89,10 +120,17 @@ export default function FusionTab() {
         if (raw) {
             try {
                 const { jobId } = JSON.parse(raw);
-                if (jobId) { setBusy(true); poll(jobId); }
-            } catch { localStorage.removeItem('aeonnimbus_council_job'); }
+                if (jobId) {
+                    setBusy(true);
+                    poll(jobId);
+                }
+            } catch {
+                localStorage.removeItem('aeonnimbus_council_job');
+            }
         }
-        return () => { if (timer.current) clearInterval(timer.current); };
+        return () => {
+            if (timer.current) clearInterval(timer.current);
+        };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -100,7 +138,7 @@ export default function FusionTab() {
     const spread = ens ? Object.values(ens.models).map((m) => m.value) : [];
     const lo = Math.min(...spread, ens?.price ?? Infinity);
     const hi = Math.max(...spread, ens?.price ?? 0);
-    const pos = (v: number) => hi === lo ? 50 : ((v - lo) / (hi - lo)) * 92 + 4;
+    const pos = (v: number) => (hi === lo ? 50 : ((v - lo) / (hi - lo)) * 92 + 4);
 
     return (
         <div className="animate-fade-in space-y-4">
@@ -111,9 +149,8 @@ export default function FusionTab() {
                     <span className="badge-nebula">5 philosophies, 1 vote</span>
                 </div>
                 <p className="mb-4 text-xs text-white/40">
-                    Every valuation approach in the terminal — DCF, Graham, Lynch, street targets,
-                    stochastic simulation — votes independently. Where they agree, trust rises; where they
-                    diverge, the spread itself is the finding.
+                    Every valuation approach in the terminal — DCF, Graham, Lynch, street targets, stochastic simulation — votes
+                    independently. Where they agree, trust rises; where they diverge, the spread itself is the finding.
                 </p>
                 {err && !ens && <ErrorNote msg={err} />}
                 {ens && (
@@ -125,12 +162,18 @@ export default function FusionTab() {
                             </div>
                             {/* consensus marker */}
                             <div className="absolute top-0 h-full w-[2px] bg-accent" style={{ left: `${pos(ens.consensus)}%` }}>
-                                <span className="absolute -bottom-6 -translate-x-1/2 whitespace-nowrap font-mono text-xs text-accent">consensus ${ens.consensus}</span>
+                                <span className="absolute -bottom-6 -translate-x-1/2 whitespace-nowrap font-mono text-xs text-accent">
+                                    consensus ${ens.consensus}
+                                </span>
                             </div>
                             {/* model dots */}
                             {Object.entries(ens.models).map(([k, m]) => (
-                                <div key={k} className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 text-xl"
-                                    style={{ left: `${pos(m.value)}%` }} title={`${k}: $${m.value}`}>
+                                <div
+                                    key={k}
+                                    className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 text-xl"
+                                    style={{ left: `${pos(m.value)}%` }}
+                                    title={`${k}: $${m.value}`}
+                                >
                                     {MODEL_ICONS[k] ?? '●'}
                                 </div>
                             ))}
@@ -140,7 +183,9 @@ export default function FusionTab() {
                             {Object.entries(ens.models).map(([k, m]) => (
                                 <div key={k} className="card-glass flex items-center justify-between p-3">
                                     <div>
-                                        <p className="text-sm font-semibold text-white/80">{MODEL_ICONS[k]} {k}</p>
+                                        <p className="text-sm font-semibold text-white/80">
+                                            {MODEL_ICONS[k]} {k}
+                                        </p>
                                         <p className="text-[10px] text-white/40">{m.philosophy}</p>
                                     </div>
                                     <p className={`font-mono text-sm font-bold ${m.upside >= 0 ? 'text-emerald' : 'text-rose'}`}>
@@ -151,8 +196,10 @@ export default function FusionTab() {
                         </div>
                         <div className="mt-4 card-cyan p-4">
                             <p className="text-sm text-white/80">
-                                <span className="font-mono font-bold text-accent">Disagreement index {ens.disagreementIndex}%</span> — {ens.readout}.
-                                Ensemble consensus <span className="font-mono">${ens.consensus}</span> ({ens.consensusUpside > 0 ? '+' : ''}{ens.consensusUpside}% vs price).
+                                <span className="font-mono font-bold text-accent">Disagreement index {ens.disagreementIndex}%</span> —{' '}
+                                {ens.readout}. Ensemble consensus <span className="font-mono">${ens.consensus}</span> (
+                                {ens.consensusUpside > 0 ? '+' : ''}
+                                {ens.consensusUpside}% vs price).
                             </p>
                         </div>
                     </>
@@ -160,10 +207,14 @@ export default function FusionTab() {
                 {/* Source integrity strip */}
                 {integ && (
                     <p className="mt-3 text-xs text-white/40">
-                        🔍 Source cross-check: {Object.entries(integ.sources).map(([s, v]) => `${s} $${v}`).join(' · ')}
+                        🔍 Source cross-check:{' '}
+                        {Object.entries(integ.sources)
+                            .map(([s, v]) => `${s} $${v}`)
+                            .join(' · ')}
                         {' — '}
                         <span className={integ.verified ? 'text-emerald' : integ.verified === false ? 'text-rose' : 'text-white/40'}>
-                            {integ.note}{integ.spreadBps != null && ` (${integ.spreadBps} bps)`}
+                            {integ.note}
+                            {integ.spreadBps != null && ` (${integ.spreadBps} bps)`}
                         </span>
                     </p>
                 )}
@@ -176,9 +227,8 @@ export default function FusionTab() {
                     <span className="badge-nebula">all paradigms, one table</span>
                 </div>
                 <p className="mb-3 text-xs text-white/40">
-                    A market analyst, a specialist research hierarchy, classic investor personas —
-                    and optionally the full multi-agent debate — each take a seat.
-                    Votes are tallied, agreement measured, and a chair synthesizes the ruling.
+                    A market analyst, a specialist research hierarchy, classic investor personas — and optionally the full multi-agent
+                    debate — each take a seat. Votes are tallied, agreement measured, and a chair synthesizes the ruling.
                 </p>
                 <div className="flex flex-wrap items-center gap-3">
                     <button className="btn-nebula" onClick={convene} disabled={busy}>
@@ -198,7 +248,9 @@ export default function FusionTab() {
                         sub="Live phase reported by the council. Calls are paced ~7s apart to respect free-tier rate limits (~1-2 min total; +3-10 min with the debate seat). Safe to switch tabs."
                     />
                 )}
-                {job?.status === 'error' && <p className="mt-3 max-w-2xl text-sm leading-relaxed text-rose">{humanizeErr(job.error ?? '')}</p>}
+                {job?.status === 'error' && (
+                    <p className="mt-3 max-w-2xl text-sm leading-relaxed text-rose">{humanizeErr(job.error ?? '')}</p>
+                )}
                 {job?.status === 'done' && job.seats && (
                     <div className="mt-5 space-y-3">
                         <div className="flex flex-wrap items-center gap-4">
@@ -206,9 +258,14 @@ export default function FusionTab() {
                                 <span className={VOTE_CLS[job.verdict ?? 'HOLD']}>{job.verdict}</span>
                             </div>
                             <div className="flex gap-2">
-                                {Object.entries(job.tally ?? {}).map(([v, n]) => n > 0 && (
-                                    <span key={v} className="badge-accent">{v} × {n}</span>
-                                ))}
+                                {Object.entries(job.tally ?? {}).map(
+                                    ([v, n]) =>
+                                        n > 0 && (
+                                            <span key={v} className="badge-accent">
+                                                {v} × {n}
+                                            </span>
+                                        ),
+                                )}
                             </div>
                             <span className="text-xs text-white/50">seat agreement {job.agreement}%</span>
                         </div>

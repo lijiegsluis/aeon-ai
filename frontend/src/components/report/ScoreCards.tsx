@@ -12,7 +12,10 @@ export function ScoreCards({ result }: { result: AnalysisResponse }) {
                 <SectionCard title="Aeon Score™" icon="🏆" premium>
                     <div className="flex items-start gap-5 mb-4">
                         <div className="flex-shrink-0 text-center">
-                            <div className={`grade-display text-6xl leading-none ${GRADE_COLORS[result.aeonScore.grade] || 'text-white'}`} style={{ WebkitTextFillColor: 'unset', background: 'none' }}>
+                            <div
+                                className={`grade-display text-6xl leading-none ${GRADE_COLORS[result.aeonScore.grade] || 'text-white'}`}
+                                style={{ WebkitTextFillColor: 'unset', background: 'none' }}
+                            >
                                 {result.aeonScore.grade}
                             </div>
                             <div className="mt-1 font-mono text-base text-white/70">{safe(result.aeonScore.numericScore)}/100</div>
@@ -24,13 +27,17 @@ export function ScoreCards({ result }: { result: AnalysisResponse }) {
                                 <div>
                                     <div className="stat-label text-emerald mb-1">Strengths</div>
                                     {result.aeonScore.strengths.slice(0, 3).map((s, i) => (
-                                        <p key={i} className="text-base text-white/70 mb-0.5 flex items-start gap-1"><span className="text-emerald flex-shrink-0">+</span> {s}</p>
+                                        <p key={i} className="text-base text-white/70 mb-0.5 flex items-start gap-1">
+                                            <span className="text-emerald flex-shrink-0">+</span> {s}
+                                        </p>
                                     ))}
                                 </div>
                                 <div>
                                     <div className="stat-label text-rose mb-1">Weaknesses</div>
                                     {result.aeonScore.weaknesses.slice(0, 3).map((w, i) => (
-                                        <p key={i} className="text-base text-white/70 mb-0.5 flex items-start gap-1"><span className="text-rose flex-shrink-0">−</span> {w}</p>
+                                        <p key={i} className="text-base text-white/70 mb-0.5 flex items-start gap-1">
+                                            <span className="text-rose flex-shrink-0">−</span> {w}
+                                        </p>
                                     ))}
                                 </div>
                             </div>
@@ -54,7 +61,9 @@ export function ScoreCards({ result }: { result: AnalysisResponse }) {
                             </div>
                         </div>
                         <div>
-                            <div className={`font-display text-lg font-bold ${result.investmentScore.signal === 'Strong Buy' || result.investmentScore.signal === 'Buy' ? 'text-emerald' : result.investmentScore.signal === 'Hold' ? 'text-gold' : 'text-rose'}`}>
+                            <div
+                                className={`font-display text-lg font-bold ${result.investmentScore.signal === 'Strong Buy' || result.investmentScore.signal === 'Buy' ? 'text-emerald' : result.investmentScore.signal === 'Hold' ? 'text-gold' : 'text-rose'}`}
+                            >
                                 {result.investmentScore.signal}
                             </div>
                             <p className="text-base text-white/70 leading-relaxed mt-1">{result.investmentScore.summary}</p>

@@ -41,6 +41,7 @@ export type {
 } from '../../shared/types';
 
 import type { AnalysisResponse } from '../../shared/types';
+import { ANALYTICS_URL } from './config';
 
 /** Cache TTL: 4 hours in milliseconds */
 const CACHE_TTL_MS = 4 * 60 * 60 * 1000;
@@ -96,7 +97,7 @@ export const useStore = create<AppState>((set, get) => ({
     _inflightTicker: null,
     setTicker: (t) => {
         const up = t.toUpperCase().trim();
-        if (!up || !/^[A-Z0-9.\-]{1,10}$/.test(up)) return;
+        if (!up || !/^[A-Z0-9.-]{1,10}$/.test(up)) return;
         const { ticker: prev, recent: prevRecent } = get();
         const recent = [prev, ...prevRecent.filter((r) => r !== up && r !== prev)].filter(Boolean).slice(0, 5);
         localStorage.setItem('aeonnimbus_global_ticker', up);
@@ -127,12 +128,12 @@ export const useStore = create<AppState>((set, get) => ({
                         const parsedData = JSON.parse(decrypted) as AnalysisResponse;
                         const cacheTime = new Date(parsedData.timestamp).getTime();
                         if (Date.now() - cacheTime < CACHE_TTL_MS) {
-                            set({ result: parsedData, view: 'report', error: null, analysisPhase: '' });
+                            set({ result: parsedData, view: 'report', error: null, analysisPhase: '', _inflightTicker: null });
                             return; // Use cache
                         }
                     }
                 }
-            } catch (e) {
+            } catch {
                 // Ignore cache read errors
             }
         }
@@ -156,7 +157,7 @@ export const useStore = create<AppState>((set, get) => ({
             });
 
             if (!res.ok) {
-                const err = await res.json().catch(() => ({ error: 'Request failed' })) as { error?: string };
+                const err = (await res.json().catch(() => ({ error: 'Request failed' }))) as { error?: string };
                 throw new Error(err.error || `HTTP ${res.status}`);
             }
 
@@ -168,17 +169,20 @@ export const useStore = create<AppState>((set, get) => ({
                 try {
                     const encrypted = await encryptCache(JSON.stringify(data));
                     localStorage.setItem(`aeonnimbus_cache_${ticker}`, encrypted);
-                } catch (e) { }
+                } catch {
+                    // Cache is best-effort
+                }
             }
 
             set({ result: data, view: 'report', analysisPhase: '' });
 
-            // Best-effort save to History & Replay (analytics service may not be running)
-            fetch('http://127.0.0.1:8000/api/analyses/save', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ticker, result: data, user_id: 1 }),
-            }).catch(() => {});
+            // Best-effort save to History & Replay; demo results are mock data, so skip them
+            if (!demoMode)
+                fetch(`${ANALYTICS_URL}/api/analyses/save`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ticker, result: data, user_id: 1 }),
+                }).catch(() => {});
         } catch (err) {
             const msg = err instanceof Error ? err.message : 'Analysis failed';
             set({ error: msg, analysisPhase: '' });

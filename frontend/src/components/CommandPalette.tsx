@@ -20,18 +20,31 @@ export default function CommandPalette({ tabs }: { tabs: { id: string; label: st
 
     const commands = useMemo<Cmd[]>(() => {
         const jump: Cmd[] = tabs.map((t) => ({
-            id: `tab:${t.id}`, icon: '→', label: `Go to ${t.label.replace(/^\S+\s/, '')}`,
-            hint: 'tab', run: () => setActiveTab(t.id),
+            id: `tab:${t.id}`,
+            icon: '→',
+            label: `Go to ${t.label.replace(/^\S+\s/, '')}`,
+            hint: 'tab',
+            run: () => setActiveTab(t.id),
         }));
         const actions: Cmd[] = [
-            { id: 'vault', icon: '🔑', label: 'Open Key Vault', hint: 'settings',
-              run: () => { setActiveTab('research'); setView('setup'); } },
-            { id: 'about', icon: '✦', label: 'About & Licenses', hint: 'info',
-              run: () => setActiveTab('about') },
+            {
+                id: 'vault',
+                icon: '🔑',
+                label: 'Open Key Vault',
+                hint: 'settings',
+                run: () => {
+                    setActiveTab('research');
+                    setView('setup');
+                },
+            },
+            { id: 'about', icon: '✦', label: 'About & Licenses', hint: 'info', run: () => setActiveTab('about') },
         ];
-        if (q && /^[A-Za-z.\-]{1,10}$/.test(q.trim())) {
+        if (q && /^[A-Za-z0-9.-]{1,10}$/.test(q.trim())) {
             actions.unshift({
-                id: 'ticker', icon: '🎯', label: `Set ticker to ${q.trim().toUpperCase()}`, hint: 'enter',
+                id: 'ticker',
+                icon: '🎯',
+                label: `Set ticker to ${q.trim().toUpperCase()}`,
+                hint: 'enter',
                 run: () => setTicker(q.trim()),
             });
         }
@@ -58,7 +71,11 @@ export default function CommandPalette({ tabs }: { tabs: { id: string; label: st
     }, [open]);
 
     useEffect(() => {
-        if (open) { setQ(''); setSel(0); setTimeout(() => inputRef.current?.focus(), 10); }
+        if (open) {
+            setQ('');
+            setSel(0);
+            setTimeout(() => inputRef.current?.focus(), 10);
+        }
     }, [open]);
 
     useEffect(() => setSel(0), [q]);
@@ -73,11 +90,12 @@ export default function CommandPalette({ tabs }: { tabs: { id: string; label: st
     if (!open) return null;
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[12vh]"
+        <div
+            className="fixed inset-0 z-[100] flex items-start justify-center pt-[12vh]"
             style={{ background: 'rgba(6,11,20,0.75)', backdropFilter: 'blur(4px)' }}
-            onClick={() => setOpen(false)}>
-            <div className="card-premium w-full max-w-lg animate-scale-in overflow-hidden p-0"
-                onClick={(e) => e.stopPropagation()}>
+            onClick={() => setOpen(false)}
+        >
+            <div className="card-premium w-full max-w-lg animate-scale-in overflow-hidden p-0" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center gap-2 border-b border-white/[0.06] px-4 py-3">
                     <span className="text-accent">⌘</span>
                     <input
@@ -85,9 +103,16 @@ export default function CommandPalette({ tabs }: { tabs: { id: string; label: st
                         value={q}
                         onChange={(e) => setQ(e.target.value)}
                         onKeyDown={(e) => {
-                            if (e.key === 'ArrowDown') { e.preventDefault(); setSel((s) => Math.min(s + 1, filtered.length - 1)); }
-                            else if (e.key === 'ArrowUp') { e.preventDefault(); setSel((s) => Math.max(s - 1, 0)); }
-                            else if (e.key === 'Enter') { e.preventDefault(); runSelected(sel); }
+                            if (e.key === 'ArrowDown') {
+                                e.preventDefault();
+                                setSel((s) => Math.min(s + 1, filtered.length - 1));
+                            } else if (e.key === 'ArrowUp') {
+                                e.preventDefault();
+                                setSel((s) => Math.max(s - 1, 0));
+                            } else if (e.key === 'Enter') {
+                                e.preventDefault();
+                                runSelected(sel);
+                            }
                         }}
                         placeholder={`Jump anywhere, set a ticker, or run an action… (current: ${ticker})`}
                         className="w-full bg-transparent text-sm text-white placeholder-white/30 outline-none"
@@ -95,16 +120,19 @@ export default function CommandPalette({ tabs }: { tabs: { id: string; label: st
                     <kbd className="rounded border border-white/10 px-1.5 py-0.5 text-[10px] text-white/30">esc</kbd>
                 </div>
                 <div className="max-h-[50vh] overflow-y-auto py-2">
-                    {filtered.length === 0 && (
-                        <p className="px-4 py-6 text-center text-sm text-white/30">No matches</p>
-                    )}
+                    {filtered.length === 0 && <p className="px-4 py-6 text-center text-sm text-white/30">No matches</p>}
                     {filtered.map((c, i) => (
-                        <button key={c.id} onClick={() => runSelected(i)} onMouseEnter={() => setSel(i)}
+                        <button
+                            key={c.id}
+                            onClick={() => runSelected(i)}
+                            onMouseEnter={() => setSel(i)}
                             className={`flex w-full items-center justify-between px-4 py-2 text-left text-sm transition-colors ${
                                 i === sel ? 'bg-accent/10 text-white' : 'text-white/70'
-                            }`}>
+                            }`}
+                        >
                             <span className="flex items-center gap-2.5">
-                                <span className="w-4 text-center">{c.icon}</span>{c.label}
+                                <span className="w-4 text-center">{c.icon}</span>
+                                {c.label}
                             </span>
                             {c.hint && <span className="text-[10px] uppercase tracking-wider text-white/25">{c.hint}</span>}
                         </button>
