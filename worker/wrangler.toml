@@ -13,7 +13,7 @@ DEMO_ONLY = "false"
 # CORS: allowed origins (comma-separated). Self-hosters: add your deployed
 # frontend URL here. For local development, localhost:5173 is already included.
 # *.pages.dev preview URLs are handled dynamically via regex in the worker.
-ALLOWED_ORIGINS = "http://localhost:5173,https://nipun-ai.pages.dev"
+ALLOWED_ORIGINS = "http://localhost:5173,https://nipun-ai.pages.dev,https://aeon-ai-1.onrender.com,https://aeon-ai-2.onrender.com,https://aeon-ai-3.onrender.com,https://aeon-platform.onrender.com,https://aeon-nimbus.onrender.com"
 
 # ── Secrets (do NOT add values here — use `wrangler secret put <NAME>`) ──────
 # SEC_API_EMAIL  — your contact email for SEC EDGAR User-Agent header.
