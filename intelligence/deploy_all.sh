@@ -66,7 +66,7 @@ echo ""
 echo "🚀 Step 3: Starting Enhanced Intelligence API..."
 
 # Stop old service
-lsof -ti:8001 | xargs kill -9 2>/dev/null || true
+lsof -ti:8003 | xargs kill -9 2>/dev/null || true
 sleep 2
 
 # Start enhanced service
@@ -76,7 +76,7 @@ echo $INTEL_PID > /tmp/intelligence_enhanced.pid
 sleep 4
 
 # Verify API
-if curl -s http://localhost:8001/health > /dev/null; then
+if curl -s http://localhost:8003/health > /dev/null; then
     echo "✓ Enhanced API running (PID: $INTEL_PID)"
 else
     echo "✗ Enhanced API failed to start"
@@ -148,8 +148,8 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 echo "🌐 Access Points:"
 echo "   Intelligence Dashboard:  http://localhost:5175"
-echo "   Enhanced API:            http://localhost:8001"
-echo "   API Documentation:       http://localhost:8001/docs"
+echo "   Enhanced API:            http://localhost:8003"
+echo "   API Documentation:       http://localhost:8003/docs"
 echo ""
 echo "📊 Features Available:"
 echo "   ✓ Market Events & D-X Countdown System"
@@ -168,7 +168,7 @@ if [ "$START_NEWS" = "y" ]; then
 fi
 echo ""
 echo "⚡ Quick Stats:"
-curl -s http://localhost:8001/api/system/info | python3 -m json.tool 2>/dev/null || echo "API warming up..."
+curl -s http://localhost:8003/api/system/info | python3 -m json.tool 2>/dev/null || echo "API warming up..."
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "🎯 Open http://localhost:5175 in your browser"

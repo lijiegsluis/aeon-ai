@@ -14,13 +14,19 @@ import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'rec
 import { useStore } from '../store';
 import { jget, jpost } from '../utils/api';
 import { getSource } from '../dataProvenance';
-import { ANALYTICS_URL } from '../config';
+import {
+    ANALYTICS_URL,
+    OPENBB_URL,
+    TRADING_AGENTS_URL,
+    FINROBOT_URL,
+    DEEP_RESEARCH_URL,
+    WORKER_URL,
+    intelligenceTickerUrl,
+} from '../config';
 
 const AEON = ANALYTICS_URL;
-const OPENBB = 'http://127.0.0.1:6900';
-const TA = 'http://127.0.0.1:8001';
-export const FINROBOT_URL = 'http://127.0.0.1:8002';
-export const FRA_URL = 'http://127.0.0.1:8600';
+const OPENBB = OPENBB_URL;
+const TA = TRADING_AGENTS_URL;
 
 /* ─── Service status — live dots for every engine ────────────────── */
 const SERVICES: [string, string, string][] = [
@@ -28,8 +34,8 @@ const SERVICES: [string, string, string][] = [
     ['Markets', `${OPENBB}/docs`, 'no-cors'],
     ['Agents', `${TA}/health`, 'cors'],
     ['Deep Reports', FINROBOT_URL, 'no-cors'],
-    ['Deep Research', `${FRA_URL}/health`, 'no-cors'],
-    ['Worker', 'http://127.0.0.1:8787/', 'no-cors'],
+    ['Deep Research', `${DEEP_RESEARCH_URL}/health`, 'no-cors'],
+    ['Worker', `${WORKER_URL}/`, 'no-cors'],
 ];
 
 export function ServiceStatus() {
@@ -93,7 +99,8 @@ export function VaultKeyStatus({ provider, label }: { provider: 'gemini' | 'open
 }
 
 /** Turn raw LLM provider errors into a human sentence. */
-export function humanizeErr(e: string): string {
+export function humanizeErr(raw: string): string {
+    const e = raw.replace(/^(Type)?Error: /, '');
     if (/PerDay|LLM_QUOTA|quotaValue/i.test(e)) {
         return (
             '🚫 Gemini free-tier DAILY quota exhausted (~20 requests/day per model on your key). ' +
@@ -104,8 +111,11 @@ export function humanizeErr(e: string): string {
     if (/429|RESOURCE_EXHAUSTED/i.test(e)) {
         return '⏳ Rate limit hit (requests per minute). Wait ~1 minute and try again.';
     }
-    if (/401|403|API key not valid|invalid|400 Client Error.*generativelanguage/i.test(e)) {
+    if (/API key not valid|invalid api key|API_KEY_INVALID|401 Client Error|403 Client Error/i.test(e)) {
         return '🔑 The API key was rejected — double-check it.';
+    }
+    if (/Failed to fetch|NetworkError|Load failed/i.test(e)) {
+        return '📡 Service unreachable — is it running? (./start-terminal.sh starts every engine)';
     }
     return e;
 }
@@ -158,7 +168,7 @@ type ObbQuote = {
     ma_200d: number | null;
 };
 type MC = { spot: number; expected: number; probUp: number; annualVol: number; percentiles: Record<string, number> };
-type DCF = { scenarios: Record<string, { growth: number; fairValue: number; upside: number }> };
+type DCF = { wacc?: number; scenarios: Record<string, { growth: number; fairValue: number; upside: number }> };
 type Personas = { mode: string; analyses: { persona: string; text: string }[] };
 
 /* ─── Overview — one screen, every engine ────────────────────────── */
@@ -170,6 +180,10 @@ export function OverviewTab({ goTo }: { goTo: (tab: string) => void }) {
     const [per, setPer] = useState<Personas | null>(null);
     const [hist, setHist] = useState<{ date: string; close: number }[]>([]);
     const [err, setErr] = useState('');
+    // Per-panel failures, so a dead service shows its reason instead of "computing…" forever
+    const [mcErr, setMcErr] = useState('');
+    const [dcfErr, setDcfErr] = useState('');
+    const [perErr, setPerErr] = useState('');
 
     useEffect(() => {
         setQ(null);
@@ -178,6 +192,9 @@ export function OverviewTab({ goTo }: { goTo: (tab: string) => void }) {
         setPer(null);
         setHist([]);
         setErr('');
+        setMcErr('');
+        setDcfErr('');
+        setPerErr('');
         // OpenBB for price/MAs + Aeon fetcher for Δ%/cap/P-E (OpenBB's yfinance
         // provider leaves those null) — cross-source merge.
         Promise.all([
@@ -192,6 +209,8 @@ export function OverviewTab({ goTo }: { goTo: (tab: string) => void }) {
                 pe: number | null;
                 high52: number | null;
                 low52: number | null;
+                ma50: number | null;
+                ma200: number | null;
             }>(`${AEON}/market/quote/${ticker}`).catch(() => null),
         ]).then(([o, a]) => {
             if (!o && !a) {
@@ -207,19 +226,19 @@ export function OverviewTab({ goTo }: { goTo: (tab: string) => void }) {
                 pe_ratio: o?.pe_ratio ?? a?.pe ?? null,
                 year_high: o?.year_high ?? a?.high52 ?? null,
                 year_low: o?.year_low ?? a?.low52 ?? null,
-                ma_50d: o?.ma_50d ?? null,
-                ma_200d: o?.ma_200d ?? null,
+                ma_50d: o?.ma_50d ?? a?.ma50 ?? null,
+                ma_200d: o?.ma_200d ?? a?.ma200 ?? null,
             });
         });
         jget<MC>(`${AEON}/quant/montecarlo/${ticker}`)
             .then(setMc)
-            .catch(() => {});
+            .catch((e) => setMcErr(String(e)));
         jget<DCF>(`${AEON}/quant/dcf/${ticker}`)
             .then(setDcf)
-            .catch(() => {});
+            .catch((e) => setDcfErr(String(e)));
         jpost<Personas>(`${AEON}/agents/personas`, { ticker, personas: ['buffett', 'lynch'] })
             .then(setPer)
-            .catch(() => {});
+            .catch((e) => setPerErr(String(e)));
         jget<{ candles: { date: string; close: number }[] }>(`${AEON}/market/history/${ticker}?period=6mo`)
             .then((d) => setHist(d.candles))
             .catch(() => {});
@@ -249,6 +268,15 @@ export function OverviewTab({ goTo }: { goTo: (tab: string) => void }) {
                                 </button>
                             ))}
                         <SourceBadge id="market-data" label="Live" />
+                        <a
+                            className="badge cursor-pointer border border-white/10 text-white/50 transition hover:border-accent/40 hover:text-accent"
+                            href={intelligenceTickerUrl(ticker)}
+                            target="_blank"
+                            rel="noreferrer"
+                            title="Event timing, news, insider trades and signals for this ticker in Aeon Intelligence"
+                        >
+                            ⏱ Timing ↗
+                        </a>
                     </div>
                 </div>
                 {q && (
@@ -274,7 +302,7 @@ export function OverviewTab({ goTo }: { goTo: (tab: string) => void }) {
                         <div>
                             <p className="stat-label">MA50 / MA200</p>
                             <p className="text-sm pt-1 text-white/70">
-                                {q.ma_50d?.toFixed(0)} / {q.ma_200d?.toFixed(0)}
+                                {q.ma_50d?.toFixed(0) ?? '—'} / {q.ma_200d?.toFixed(0) ?? '—'}
                             </p>
                         </div>
                         <div>
@@ -344,7 +372,7 @@ export function OverviewTab({ goTo }: { goTo: (tab: string) => void }) {
                 <div className="card p-5">
                     <div className="mb-3 flex items-center justify-between">
                         <h3 className="section-heading">Quant Snapshot</h3>
-                        <button className="text-xs text-accent hover:underline" onClick={() => goTo('quant')}>
+                        <button className="text-xs text-accent hover:underline" onClick={() => goTo('markets')}>
                             full lab →
                         </button>
                     </div>
@@ -358,9 +386,12 @@ export function OverviewTab({ goTo }: { goTo: (tab: string) => void }) {
                                 <div className="score-bar-fill" style={{ width: `${mc.probUp}%` }} />
                             </div>
                         </>
+                    ) : mcErr ? (
+                        <p className="text-sm text-white/40">Monte Carlo unavailable — {humanizeErr(mcErr)}</p>
                     ) : (
                         <p className="text-sm text-white/30">computing…</p>
                     )}
+                    {dcfErr && !dcf && <p className="mt-3 text-xs text-white/40">DCF unavailable — {humanizeErr(dcfErr)}</p>}
                     {dcf && (
                         <div className="mt-4 flex justify-between font-mono text-sm">
                             {Object.entries(dcf.scenarios).map(([n, s]) => (
@@ -377,7 +408,7 @@ export function OverviewTab({ goTo }: { goTo: (tab: string) => void }) {
                 <div className="card p-5">
                     <div className="mb-3 flex items-center justify-between">
                         <h3 className="section-heading">Investor Lenses</h3>
-                        <button className="text-xs text-accent hover:underline" onClick={() => goTo('personas')}>
+                        <button className="text-xs text-accent hover:underline" onClick={() => goTo('agents')}>
                             all personas →
                         </button>
                     </div>
@@ -387,6 +418,8 @@ export function OverviewTab({ goTo }: { goTo: (tab: string) => void }) {
                                 <span className="capitalize text-nebula-light font-semibold">{a.persona}:</span> {a.text.slice(0, 140)}…
                             </p>
                         ))
+                    ) : perErr ? (
+                        <p className="text-sm text-white/40">Personas unavailable — {humanizeErr(perErr)}</p>
                     ) : (
                         <p className="text-sm text-white/30">thinking…</p>
                     )}
@@ -452,6 +485,8 @@ function MarketsScreener() {
                         low52: number | null;
                         price: number | null;
                         name: string | null;
+                        ma50: number | null;
+                        ma200: number | null;
                     }[];
                 }>(`${AEON}/market/screener?tickers=${encodeURIComponent(symbols)}`)
                     .then((d) => d.results)
@@ -469,8 +504,8 @@ function MarketsScreener() {
                       pe_ratio: null,
                       year_high: a.high52,
                       year_low: a.low52,
-                      ma_50d: null,
-                      ma_200d: null,
+                      ma_50d: a.ma50,
+                      ma_200d: a.ma200,
                   }));
             if (!base.length) throw new Error('no data from OpenBB or Aeon');
             setRows(
@@ -483,6 +518,8 @@ function MarketsScreener() {
                         pe_ratio: r.pe_ratio ?? a?.pe ?? null,
                         year_high: r.year_high ?? a?.high52 ?? null,
                         year_low: r.year_low ?? a?.low52 ?? null,
+                        ma_50d: r.ma_50d ?? a?.ma50 ?? null,
+                        ma_200d: r.ma_200d ?? a?.ma200 ?? null,
                     };
                 }),
             );
@@ -493,7 +530,8 @@ function MarketsScreener() {
     };
 
     useEffect(() => {
-        const syms = list.includes(ticker) ? list : `${ticker},${list}`;
+        const current = list.split(',').map((x) => x.trim().toUpperCase());
+        const syms = current.includes(ticker) ? list : `${ticker},${list}`;
         setList(syms);
         load(syms);
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -745,30 +783,35 @@ function QuantSection() {
     const [mk, setMk] = useState<MK | null>(null);
     const [busy, setBusy] = useState(false);
     const [err, setErr] = useState('');
+    const [dcfErr, setDcfErr] = useState('');
+    const [mkErr, setMkErr] = useState('');
     const [port, setPort] = useState('AAPL,MSFT,GOOGL,NVDA');
 
     useEffect(() => {
         setBusy(true);
         setErr('');
+        setDcfErr('');
         setMc(null);
         setDcf(null);
-        Promise.all([jget<MC>(`${AEON}/quant/montecarlo/${ticker}`), jget<DCF>(`${AEON}/quant/dcf/${ticker}`)])
+        // Independent: a company without positive free cash flow still gets its Monte Carlo
+        Promise.allSettled([jget<MC>(`${AEON}/quant/montecarlo/${ticker}`), jget<DCF>(`${AEON}/quant/dcf/${ticker}`)])
             .then(([m, d]) => {
-                setMc(m);
-                setDcf(d);
+                if (m.status === 'fulfilled') setMc(m.value);
+                else setErr(String(m.reason));
+                if (d.status === 'fulfilled') setDcf(d.value);
+                else setDcfErr(String(d.reason));
             })
-            .catch((e) => setErr(String(e)))
             .finally(() => setBusy(false));
     }, [ticker]);
 
     const optimize = async () => {
         setBusy(true);
-        setErr('');
+        setMkErr('');
         setMk(null);
         try {
             setMk(await jget<MK>(`${AEON}/quant/markowitz?tickers=${encodeURIComponent(port)}`));
         } catch (e) {
-            setErr(String(e));
+            setMkErr(String(e));
         }
         setBusy(false);
     };
@@ -782,6 +825,7 @@ function QuantSection() {
                     {busy && <span className="text-xs text-white/40">computing…</span>}
                 </div>
                 {err && <ErrorNote msg={err} />}
+                {dcfErr && <p className="mt-2 text-xs text-white/40">DCF: {humanizeErr(dcfErr)}</p>}
                 {mc && (
                     <div className="grid gap-4 sm:grid-cols-2">
                         <div className="card-cyan p-4">
@@ -800,7 +844,9 @@ function QuantSection() {
                         </div>
                         {dcf && (
                             <div className="card-premium p-4">
-                                <p className="stat-label mb-2">DCF fair value · WACC 9%</p>
+                                <p className="stat-label mb-2">
+                                    DCF fair value{dcf.wacc != null ? ` · WACC ${(dcf.wacc * 100).toFixed(1)}%` : ''}
+                                </p>
                                 {Object.entries(dcf.scenarios).map(([n, s]) => (
                                     <div key={n} className="flex justify-between py-0.5 text-sm">
                                         <span className="capitalize text-white/60">
@@ -834,6 +880,7 @@ function QuantSection() {
                         {busy ? 'Working…' : 'Optimize'}
                     </button>
                 </form>
+                {mkErr && <ErrorNote msg={mkErr} />}
                 {mk && (
                     <div className="mt-4">
                         <div className="mb-3 flex flex-wrap gap-2">

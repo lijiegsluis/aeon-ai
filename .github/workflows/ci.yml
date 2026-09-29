@@ -52,3 +52,32 @@ jobs:
                   cache-dependency-path: ${{ matrix.package }}/package-lock.json
             - run: cd ${{ matrix.package }} && npm ci
             - run: cd ${{ matrix.package }} && npx vitest run --reporter=verbose
+
+    python:
+        name: Python Tests (${{ matrix.service }})
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                service: [analytics, intelligence/backend]
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-python@v5
+              with:
+                  python-version: '3.12'
+                  cache: pip
+                  cache-dependency-path: ${{ matrix.service }}/requirements*.txt
+            - run: pip install -r ${{ matrix.service }}/requirements.txt -r ${{ matrix.service }}/requirements-dev.txt
+            - run: cd ${{ matrix.service }} && python -m pytest -q tests
+
+    intelligence-frontend:
+        name: Intelligence Frontend Build
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+                  cache: npm
+                  cache-dependency-path: intelligence/frontend/package-lock.json
+            - run: cd intelligence/frontend && npm ci
+            - run: cd intelligence/frontend && npm run build

@@ -1,14 +1,27 @@
 """
 API endpoints for persistence, collaboration, and advanced features
 """
+import math
+import re
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from datetime import datetime, timedelta
 import secrets
 import json
 from fastapi import HTTPException, FastAPI
 import requests as http
 from database import save_analysis, get_analysis_history, save_watchlist, get_watchlists, create_alert, get_active_alerts
+
+
+_TICKER = re.compile(r"^[A-Z0-9.\-^]{1,10}$")
+CONDITIONS = {"price_above", "price_below", "pe_above", "pe_below"}
+
+
+def _clean_ticker(t: str) -> str:
+    t = (t or "").strip().upper()
+    if not _TICKER.match(t):
+        raise ValueError(f"invalid ticker: {t!r}")
+    return t
 
 
 def register_api_extensions(app: FastAPI, quote_func):
@@ -27,6 +40,21 @@ def register_api_extensions(app: FastAPI, quote_func):
         tickers: List[str]
         user_id: int
 
+        @field_validator("tickers")
+        @classmethod
+        def _tickers(cls, v):
+            out = list(dict.fromkeys(_clean_ticker(t) for t in v if t and t.strip()))
+            if not out:
+                raise ValueError("at least one ticker is required")
+            return out[:50]
+
+        @field_validator("name")
+        @classmethod
+        def _name(cls, v):
+            if not v.strip():
+                raise ValueError("name is required")
+            return v.strip()[:80]
+
 
     class AlertRequest(BaseModel):
         ticker: str
@@ -34,9 +62,33 @@ def register_api_extensions(app: FastAPI, quote_func):
         threshold: float
         user_id: int
 
+        @field_validator("ticker")
+        @classmethod
+        def _ticker(cls, v):
+            return _clean_ticker(v)
+
+        @field_validator("condition_type")
+        @classmethod
+        def _cond(cls, v):
+            if v not in CONDITIONS:
+                raise ValueError(f"condition_type must be one of {sorted(CONDITIONS)}")
+            return v
+
+        @field_validator("threshold")
+        @classmethod
+        def _threshold(cls, v):
+            if not math.isfinite(v) or v <= 0:
+                raise ValueError("threshold must be a positive number")
+            return v
+
 
     class ComparisonRequest(BaseModel):
         tickers: List[str]  # Up to 5 tickers
+
+        @field_validator("tickers")
+        @classmethod
+        def _tickers(cls, v):
+            return list(dict.fromkeys(_clean_ticker(t) for t in v if t and t.strip()))
 
 
     class ShareAnalysisRequest(BaseModel):
@@ -70,6 +122,17 @@ def register_api_extensions(app: FastAPI, quote_func):
             return {**dict(row), "result": json.loads(row["result_json"])}
 
 
+    @app.delete("/api/analyses/{analysis_id}")
+    def api_delete_analysis(analysis_id: int):
+        from database import get_db
+        with get_db() as conn:
+            conn.execute("DELETE FROM shared_analyses WHERE analysis_id = ?", (analysis_id,))
+            cur = conn.execute("DELETE FROM analyses WHERE id = ?", (analysis_id,))
+        if not cur.rowcount:
+            raise HTTPException(404, "Analysis not found")
+        return {"status": "deleted"}
+
+
     # ─── Watchlist Endpoints ─────────────────────────────────────────────
 
     @app.post("/api/watchlists")
@@ -86,8 +149,20 @@ def register_api_extensions(app: FastAPI, quote_func):
         return {"watchlists": watchlists}
 
 
+    @app.delete("/api/watchlists/{watchlist_id}")
+    def api_delete_watchlist(watchlist_id: int):
+        from database import get_db
+        with get_db() as conn:
+            cur = conn.execute("DELETE FROM watchlists WHERE id = ?", (watchlist_id,))
+        if not cur.rowcount:
+            raise HTTPException(404, "Watchlist not found")
+        return {"status": "deleted"}
+
+
+    # Plain `def` so FastAPI runs it in a worker thread — the per-ticker quotes are
+    # blocking network calls that would otherwise stall every other request.
     @app.post("/api/watchlists/{watchlist_id}/analyze")
-    async def api_analyze_watchlist(watchlist_id: int):
+    def api_analyze_watchlist(watchlist_id: int):
         """Bulk analyze all tickers in watchlist"""
         from database import get_db
         with get_db() as conn:
@@ -103,7 +178,8 @@ def register_api_extensions(app: FastAPI, quote_func):
                 quote_data = quote_func(ticker)
                 results.append({"ticker": ticker, "status": "success", "data": quote_data})
             except Exception as e:
-                results.append({"ticker": ticker, "status": "error", "error": str(e)})
+                detail = getattr(e, "detail", None) or str(e) or type(e).__name__
+                results.append({"ticker": ticker, "status": "error", "error": detail})
 
         return {"watchlist_id": watchlist_id, "results": results, "total": len(tickers)}
 
@@ -133,9 +209,23 @@ def register_api_extensions(app: FastAPI, quote_func):
         return {"status": "deactivated"}
 
 
+    @app.get("/api/alerts/triggered")
+    def api_triggered_alerts(limit: int = 20):
+        """Recently fired alerts (each alert fires once, then switches off)."""
+        from database import get_db
+        with get_db() as conn:
+            rows = conn.execute(
+                "SELECT * FROM alerts WHERE triggered_at IS NOT NULL ORDER BY triggered_at DESC LIMIT ?", (limit,)
+            ).fetchall()
+        return {"alerts": [dict(r) for r in rows]}
+
+
     @app.post("/api/alerts/check")
     def api_check_alerts():
-        """Check all active alerts and return triggered ones"""
+        """Check all active alerts; each one that fires is returned once and then
+        switched off, so a price sitting past its threshold doesn't re-notify
+        every minute."""
+        from database import get_db
         alerts = get_active_alerts()
         triggered = []
 
@@ -161,6 +251,12 @@ def register_api_extensions(app: FastAPI, quote_func):
             except Exception:
                 continue
 
+        if triggered:
+            now = datetime.utcnow().isoformat(timespec="seconds")
+            with get_db() as conn:
+                for t in triggered:
+                    conn.execute("UPDATE alerts SET is_active = 0, triggered_at = ?, triggered_value = ? WHERE id = ?",
+                                 (now, t["current_value"], t["id"]))
         return {"triggered": triggered, "count": len(triggered)}
 
 
@@ -177,7 +273,7 @@ def register_api_extensions(app: FastAPI, quote_func):
             try:
                 results[ticker] = quote_func(ticker)
             except Exception as e:
-                results[ticker] = {"error": str(e)}
+                results[ticker] = {"error": getattr(e, "detail", None) or str(e) or type(e).__name__}
 
         return {"comparison": results, "tickers": req.tickers}
 

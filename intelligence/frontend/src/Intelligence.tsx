@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import './Intelligence.css';
+import TickerLens from './TickerLens';
+import { formatEventDate, timeAgo } from './format';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8001';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8003';
 
 interface NewsItem {
     id: number;
@@ -375,6 +377,7 @@ interface InsiderTrades90Response {
 }
 
 type ViewType =
+    | 'ticker'
     | 'overview'
     | 'live'
     | 'signals'
@@ -387,7 +390,19 @@ type ViewType =
     | 'volatility';
 
 function Intelligence() {
-    const [view, setView] = useState<ViewType>('overview');
+    // Aeon Analysis links here as ?ticker=XYZ — open that name's lens directly.
+    const initialTicker = (new URLSearchParams(window.location.search).get('ticker') || '').trim().toUpperCase();
+    const [view, setView] = useState<ViewType>(initialTicker ? 'ticker' : 'overview');
+    const [lensTicker, setLensTicker] = useState<string>(initialTicker);
+    const openLens = (t: string) => {
+        const tk = t.trim().toUpperCase();
+        if (!tk || tk === 'ALL' || tk === 'N/A') return;
+        setLensTicker(tk);
+        setView('ticker');
+        const url = new URL(window.location.href);
+        url.searchParams.set('ticker', tk);
+        window.history.replaceState(null, '', url);
+    };
     const [calendarMode, setCalendarMode] = useState<'list' | 'month'>('list');
     const now0 = new Date();
     const [viewMonth, setViewMonth] = useState<number>(now0.getMonth());
@@ -411,10 +426,19 @@ function Intelligence() {
     const [connected, setConnected] = useState(false);
     const [lastUpdate, setLastUpdate] = useState<string>('');
 
+    // The backend refreshes its caches every few minutes, so polling once a minute is
+    // plenty — and skipping polls while the tab is hidden saves everyone's quota.
     useEffect(() => {
         fetchAllData();
-        const interval = setInterval(fetchAllData, 10000);
-        return () => clearInterval(interval);
+        const interval = setInterval(() => {
+            if (document.visibilityState === 'visible') fetchAllData();
+        }, 60000);
+        const onVisible = () => document.visibilityState === 'visible' && fetchAllData();
+        document.addEventListener('visibilitychange', onVisible);
+        return () => {
+            clearInterval(interval);
+            document.removeEventListener('visibilitychange', onVisible);
+        };
     }, []);
 
     const fetchAllData = async () => {
@@ -424,7 +448,7 @@ function Intelligence() {
                     fetch(`${API_BASE}/api/dashboard`),
                     fetch(`${API_BASE}/api/smart-money/notifications`),
                     fetch(`${API_BASE}/api/ai-predictions`),
-                    fetch(`${API_BASE}/api/telegram/breaking-news`),
+                    fetch(`${API_BASE}/api/telegram/breaking-news?limit=300`),
                     fetch(`${API_BASE}/api/events/live?timeframe=90days`),
                     fetch(`${API_BASE}/api/sources/status`),
                     fetch(`${API_BASE}/api/volatility`),
@@ -440,6 +464,8 @@ function Intelligence() {
                 setDailyBrief(data.daily_brief || null);
                 setConnected(true);
                 setLastUpdate(new Date().toLocaleTimeString());
+            } else {
+                setConnected(false);
             }
 
             if (smartMoneyRes.ok) {
@@ -529,10 +555,24 @@ function Intelligence() {
                 </div>
 
                 <nav className="terminal-nav">
+                    <form
+                        className="lens-search sidebar"
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            const v = new FormData(e.currentTarget).get('t');
+                            if (typeof v === 'string') openLens(v);
+                        }}
+                    >
+                        <input name="t" placeholder="Ticker lens…" aria-label="Open ticker lens" />
+                    </form>
                     <div className="nav-group-label">Today</div>
                     <button className={view === 'overview' ? 'active' : ''} onClick={() => setView('overview')}>
                         <span className="nav-glyph">◆</span>
                         <span>OVERVIEW</span>
+                    </button>
+                    <button className={view === 'ticker' ? 'active' : ''} onClick={() => setView('ticker')}>
+                        <span className="nav-glyph">⌖</span>
+                        <span>TICKER LENS{lensTicker ? ` · ${lensTicker}` : ''}</span>
                     </button>
                     <button className={view === 'brief' ? 'active' : ''} onClick={() => setView('brief')}>
                         <span className="nav-glyph">◈</span>
@@ -588,6 +628,7 @@ function Intelligence() {
             </aside>
 
             <main className="terminal-main">
+                {view === 'ticker' && <TickerLens apiBase={API_BASE} ticker={lensTicker} onTicker={openLens} />}
                 {view === 'overview' && (
                     <div className="terminal-view">
                         <div className="view-header">
@@ -613,9 +654,21 @@ function Intelligence() {
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    {signals.length === 0 && (
+                                        <tr>
+                                            <td colSpan={8} className="cell-empty">
+                                                No active signals. Signals only come from real inputs — insider buys, tagged news, sentiment
+                                                extremes — so this stays empty while those sources are quiet or unreachable.
+                                            </td>
+                                        </tr>
+                                    )}
                                     {signals.map((signal) => (
                                         <tr key={signal.id}>
-                                            <td className="cell-tickers">{signal.ticker}</td>
+                                            <td className="cell-tickers">
+                                                <button className="ticker-link" onClick={() => openLens(signal.ticker)}>
+                                                    {signal.ticker}
+                                                </button>
+                                            </td>
                                             <td className="cell-type">{signal.signal_type.toUpperCase()}</td>
                                             <td className="cell-phase">
                                                 <span style={{ color: getPhaseColor(signal.phase) }}>{signal.phase}</span>
@@ -643,6 +696,12 @@ function Intelligence() {
                                 <p>Real-time sentiment indicators from multiple sources.</p>
                             </div>
                             <div className="sentiment-grid">
+                                {sentiment.length === 0 && (
+                                    <p className="text-muted">
+                                        No sentiment readings available — CNN Fear &amp; Greed, Reddit and VIX are all unreachable right
+                                        now.
+                                    </p>
+                                )}
                                 {sentiment.map((ind) => {
                                     const tone = getSentimentTone(ind.interpretation);
                                     return (
@@ -671,7 +730,7 @@ function Intelligence() {
                         <section className="data-block">
                             <div className="block-header">
                                 <h2>RECENT MARKET UPDATES</h2>
-                                <p>Latest news and developments. Auto-refreshes every 10 seconds.</p>
+                                <p>Latest news and developments. Refreshes every minute.</p>
                             </div>
                             <table className="data-grid news-grid">
                                 <thead>
@@ -684,11 +743,28 @@ function Intelligence() {
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    {recentNews.length === 0 && (
+                                        <tr>
+                                            <td colSpan={5} className="cell-empty">
+                                                No headlines right now — the news feeds are unreachable. See Data Sources for details.
+                                            </td>
+                                        </tr>
+                                    )}
                                     {recentNews.slice(0, 12).map((item) => (
                                         <tr key={item.id} className={item.urgency === 'breaking' ? 'urgency-breaking' : ''}>
-                                            <td className="cell-time">{new Date(item.published_at).toLocaleString()}</td>
+                                            <td className="cell-time" title={new Date(item.published_at).toLocaleString()}>
+                                                {timeAgo(item.published_at)}
+                                            </td>
                                             <td className="cell-source">{item.source}</td>
-                                            <td className="cell-news">{item.title}</td>
+                                            <td className="cell-news">
+                                                {item.url ? (
+                                                    <a href={item.url} target="_blank" rel="noreferrer">
+                                                        {item.title}
+                                                    </a>
+                                                ) : (
+                                                    item.title
+                                                )}
+                                            </td>
                                             <td className="cell-sentiment">
                                                 {getSentimentIcon(item.sentiment)} {item.sentiment}
                                             </td>
@@ -726,11 +802,28 @@ function Intelligence() {
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    {recentNews.length === 0 && (
+                                        <tr>
+                                            <td colSpan={7} className="cell-empty">
+                                                No headlines right now — the news feeds are unreachable. See Data Sources for details.
+                                            </td>
+                                        </tr>
+                                    )}
                                     {recentNews.map((item) => (
                                         <tr key={item.id} className={item.urgency === 'breaking' ? 'urgency-breaking' : ''}>
-                                            <td className="cell-time">{new Date(item.published_at).toLocaleString()}</td>
+                                            <td className="cell-time" title={new Date(item.published_at).toLocaleString()}>
+                                                {timeAgo(item.published_at)}
+                                            </td>
                                             <td className="cell-source">{item.source}</td>
-                                            <td className="cell-news">{item.title}</td>
+                                            <td className="cell-news">
+                                                {item.url ? (
+                                                    <a href={item.url} target="_blank" rel="noreferrer">
+                                                        {item.title}
+                                                    </a>
+                                                ) : (
+                                                    item.title
+                                                )}
+                                            </td>
                                             <td className="cell-summary">{item.summary}</td>
                                             <td className="cell-sentiment">
                                                 {getSentimentIcon(item.sentiment)} {item.sentiment}
@@ -783,7 +876,11 @@ function Intelligence() {
 
                                         return (
                                             <tr key={signal.id}>
-                                                <td className="cell-tickers">{signal.ticker}</td>
+                                                <td className="cell-tickers">
+                                                    <button className="ticker-link" onClick={() => openLens(signal.ticker)}>
+                                                        {signal.ticker}
+                                                    </button>
+                                                </td>
                                                 <td className="cell-type">{signal.signal_type.toUpperCase()}</td>
                                                 <td className="cell-phase">
                                                     <span style={{ color: getPhaseColor(signal.phase) }}>{signal.phase}</span>
@@ -1721,7 +1818,7 @@ function Intelligence() {
                                                             {sig.sample_events.map((ev: any, i: number) => (
                                                                 <tr key={i}>
                                                                     <td>{ev.ticker}</td>
-                                                                    <td>{ev.date}</td>
+                                                                    <td>{formatEventDate(ev.date)}</td>
                                                                     <td>
                                                                         {Array.isArray(ev.insider_or_insiders)
                                                                             ? ev.insider_or_insiders.join(', ')
@@ -2059,7 +2156,7 @@ function Intelligence() {
                                                             <span style={{ color: '#888888', fontSize: '0.85em' }}> (est.)</span>
                                                         )}
                                                     </td>
-                                                    <td className="cell-date">{evt.date}</td>
+                                                    <td className="cell-date">{formatEventDate(evt.date)}</td>
                                                     <td className="cell-countdown" style={{ color: evt.phase_color, fontWeight: 700 }}>
                                                         {evt.days_until <= 0 ? 'LIVE' : `D-${evt.days_until}`}
                                                     </td>
@@ -2068,7 +2165,13 @@ function Intelligence() {
                                                             {evt.phase.toUpperCase()}
                                                         </span>
                                                     </td>
-                                                    <td className="cell-tickers">{(evt.affected_tickers || []).join(', ')}</td>
+                                                    <td className="cell-tickers">
+                                                        {(evt.affected_tickers || []).map((t) => (
+                                                            <button key={t} className="ticker-link" onClick={() => openLens(t)}>
+                                                                {t}
+                                                            </button>
+                                                        ))}
+                                                    </td>
                                                     <td className="cell-rec">{evt.recommendation}</td>
                                                 </tr>
                                             ))
@@ -2303,7 +2406,7 @@ function Intelligence() {
                                         volatility.volatility_catalysts.map((evt) => (
                                             <tr key={evt.id}>
                                                 <td className="cell-primary">{evt.title}</td>
-                                                <td className="cell-date">{evt.date}</td>
+                                                <td className="cell-date">{formatEventDate(evt.date)}</td>
                                                 <td className="cell-countdown" style={{ color: evt.phase_color, fontWeight: 700 }}>
                                                     {evt.days_until <= 0 ? 'LIVE' : `D-${evt.days_until}`}
                                                 </td>
@@ -2312,7 +2415,13 @@ function Intelligence() {
                                                         {evt.phase.toUpperCase()}
                                                     </span>
                                                 </td>
-                                                <td className="cell-tickers">{(evt.affected_tickers || []).join(', ')}</td>
+                                                <td className="cell-tickers">
+                                                    {(evt.affected_tickers || []).map((t) => (
+                                                        <button key={t} className="ticker-link" onClick={() => openLens(t)}>
+                                                            {t}
+                                                        </button>
+                                                    ))}
+                                                </td>
                                                 <td className="cell-rec">{evt.recommendation}</td>
                                             </tr>
                                         ))

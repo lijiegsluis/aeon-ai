@@ -1314,3 +1314,113 @@ body {
         font-size: 9px;
     }
 }
+
+/* ── Ticker lens ─────────────────────────────────────────── */
+.lens-search {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    max-width: 360px;
+}
+.lens-search input {
+    flex: 1;
+    background: var(--dark-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 8px 12px;
+    text-transform: uppercase;
+}
+.lens-search input:focus {
+    outline: none;
+    border-color: var(--gold);
+}
+.lens-search button {
+    background: var(--gold);
+    color: #000;
+    border: 0;
+    border-radius: 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 0 14px;
+    cursor: pointer;
+}
+.lens-search.sidebar {
+    margin: 0 0 14px;
+    max-width: none;
+}
+.lens-search.sidebar input {
+    font-size: 12px;
+    padding: 7px 10px;
+}
+.ticker-link {
+    background: none;
+    border: 0;
+    padding: 0 6px 0 0;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    text-decoration: underline dotted rgba(212, 175, 55, 0.5);
+    text-underline-offset: 3px;
+}
+.ticker-link:hover {
+    color: var(--gold-bright);
+}
+.cell-news a {
+    color: inherit;
+    text-decoration: none;
+}
+.cell-news a:hover {
+    color: var(--gold-bright);
+    text-decoration: underline;
+}
+.lens-timing {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+    padding: 20px 24px;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--text-dim);
+    border-radius: 14px;
+    background: linear-gradient(180deg, var(--panel), var(--panel-2));
+}
+.lens-timing.phase-accumulation {
+    border-left-color: #10b981;
+}
+.lens-timing.phase-euforia {
+    border-left-color: #f59e0b;
+}
+.lens-timing.phase-danger,
+.lens-timing.phase-live {
+    border-left-color: #ef4444;
+}
+.lens-timing.phase-pre-rumor {
+    border-left-color: #3b82f6;
+}
+.lens-timing .header-metrics {
+    margin-top: 0;
+}
+.lens-headline {
+    font-size: 20px;
+    font-weight: 700;
+    margin: 6px 0;
+    max-width: 560px;
+}
+.lens-note {
+    margin-top: 8px;
+    font-size: 12px;
+}
+.lens-source {
+    font-size: 11px;
+    margin-top: 2px;
+}
+.lens-columns {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    gap: 20px;
+}

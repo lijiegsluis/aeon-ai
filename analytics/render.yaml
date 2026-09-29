@@ -12,7 +12,7 @@ services:
           - key: AEON_ANALYTICS_ALLOWED_ORIGINS
             sync: false # set to the deployed frontend's real origin(s), comma-separated
           - key: AEON_TA_SERVICE_URL
-            sync: false # set to the deployed Aeon Intelligence API's real URL (used for TA data)
+            sync: false # URL of a TradingAgents service (only needed for the council "full debate" seat)
       # DB defaults to SQLite at ~/.aeon/terminal.db inside the container, which is
       # EPHEMERAL on Render's free plan — watchlists/alerts/analysis history reset on
       # every redeploy or restart. For durable storage, add a paid persistent disk and

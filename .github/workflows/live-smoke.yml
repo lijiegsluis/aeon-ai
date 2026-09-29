@@ -1,0 +1,33 @@
+name: Live data smoke test
+
+# Calls the real upstreams (Yahoo, Stooq, SEC, BLS, the Fed, RSS feeds) from a
+# GitHub runner and prints what each one returned. Upstreams go down or block
+# cloud IPs from time to time, so this reports rather than fails — read the log.
+on:
+    workflow_dispatch:
+    schedule:
+        - cron: '17 13 * * 1'
+    pull_request:
+        paths:
+            - 'analytics/**'
+            - 'intelligence/backend/**'
+
+jobs:
+    smoke:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-python@v5
+              with:
+                  python-version: '3.12'
+            - run: pip install -r analytics/requirements.txt -r intelligence/backend/requirements.txt
+            - name: Analytics data layer
+              working-directory: analytics
+              env:
+                  AEON_ANALYTICS_DB_PATH: /tmp/aeon/terminal.db
+              run: python ../.github/scripts/smoke_analytics.py
+            - name: Intelligence sources
+              working-directory: intelligence/backend
+              env:
+                  AEON_INTEL_DB_PATH: /tmp/aeon/intelligence.db
+              run: python ../../.github/scripts/smoke_intelligence.py

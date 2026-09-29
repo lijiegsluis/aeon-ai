@@ -184,7 +184,7 @@ export default function AlphaDigest() {
                 {personas && (
                     <div className="grid gap-3 sm:grid-cols-2">
                         {personas.mode === 'demo' && (
-                            <span className="badge-gold sm:col-span-2">Quick take (free) — live AI available in the Personas tab</span>
+                            <span className="badge-gold sm:col-span-2">Quick take (free) — live AI is on the Agents tab</span>
                         )}
                         {personas.analyses.map((a) => (
                             <div key={a.persona} className="card-premium p-4">

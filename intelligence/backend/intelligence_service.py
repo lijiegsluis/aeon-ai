@@ -1,11 +1,10 @@
 """
 Aeon Nimbus Intelligence - Dedicated Market Event Monitoring Service
-Port: 8001
+Port: 8003 (8001 is TradingAgents in the Analysis terminal stack)
 Purpose: Real-time event aggregation, countdown tracking, sentiment analysis
 """
 import json
 import os
-import random
 import re
 import sqlite3
 import threading
@@ -31,7 +30,13 @@ from prediction_engine import generate_ai_predictions, generate_daily_brief
 
 app = FastAPI(title="Aeon Nimbus Intelligence API", version="1.0.0")
 
-_DEFAULT_ORIGINS = ["http://localhost:5175", "http://127.0.0.1:5175"]
+_DEFAULT_ORIGINS = [
+    "http://localhost:5175", "http://127.0.0.1:5175",
+    # Aeon Analysis links into Intelligence (?ticker=) and reads its ticker lens
+    "http://localhost:5173", "http://127.0.0.1:5173",
+    "https://aeon-ai-1.onrender.com", "https://aeon-ai-2.onrender.com", "https://aeon-ai-3.onrender.com",
+    "https://aeon-platform.onrender.com", "https://aeon-nimbus.onrender.com",
+]
 _EXTRA_ORIGINS = [o.strip() for o in os.environ.get("AEON_INTEL_ALLOWED_ORIGINS", "").split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
@@ -116,6 +121,16 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type);
             CREATE INDEX IF NOT EXISTS idx_news_timestamp ON news_feed(timestamp);
         """)
+        # `source` separates hand-added events (kept forever) from calendar_sync's
+        # seeded rows (rebuilt every sync). Older databases predate the column.
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(events)")}
+        if "source" not in cols:
+            conn.execute("ALTER TABLE events ADD COLUMN source TEXT DEFAULT 'calendar'")
+        # Earlier versions filled news_feed with invented headlines (credited to
+        # Reuters/Bloomberg/CNBC, linked to example.com) whenever every RSS feed
+        # failed. Remove any that were persisted.
+        conn.execute("DELETE FROM news_feed WHERE url LIKE 'https://example.com/%'")
+        conn.commit()
 
 init_db()
 
@@ -246,8 +261,8 @@ def _entry_exit_note(phase: str, days_until: int) -> str:
 # fetch, honestly falling back to a labeled "(estimated date)" placeholder only
 # where no real schedule exists. Everything else below is either real (SEC
 # Form 4, RSS news, CoinGecko, CNN Fear&Greed/VIX/Reddit, Telegram) or an
-# honestly fail-soft fallback that only activates when a real fetch genuinely
-# fails (never presented as more certain than it is).
+# empty when a real fetch fails - the previous real batch is kept, and nothing is
+# ever invented to fill the gap.
 #
 # Unlike populated_api.py, these caches are populated in a background thread
 # at startup rather than synchronously at import time, so slow SEC/RSS/LLM
@@ -266,13 +281,13 @@ DAILY_BRIEF: Dict[str, Any] = {}
 
 
 def generate_insider_trades():
-    """Real SEC Form 4 insider trading data, plus whether it's genuinely real -
-    callers must check this before persisting into the permanent 90-day tracker,
-    since the illustrative fallback (fake names/random amounts) must never be
-    written into that real history table under the same shape as real trades."""
+    """Real SEC Form 4 open-market trades, plus whether this call fetched fresh data.
+    When SEC is unreachable the previous real batch is returned unchanged (flag False,
+    so it isn't re-persisted); nothing is ever invented."""
     real_trades = real_data.get_recent_form4_trades(max_filings=30)
     if not real_trades:
-        return _fallback_insider_trades(), False
+        # Keep whatever real trades we already have rather than inventing any.
+        return INSIDER_TRADES, False
 
     ticker_map = real_data.get_sec_ticker_map()
     now = datetime.now()
@@ -324,80 +339,8 @@ def generate_insider_trades():
     return sorted(out, key=lambda x: x["days_ago"]), True
 
 
-def _fallback_insider_trades():
-    """Illustrative sample insider trades - used only when the real SEC Form 4 fetch fails."""
-    now = datetime.now()
-
-    companies = [
-        {"ticker": "NVDA", "name": "Jensen Huang", "role": "CEO"},
-        {"ticker": "AAPL", "name": "Tim Cook", "role": "CEO"},
-        {"ticker": "MSFT", "name": "Satya Nadella", "role": "CEO"},
-        {"ticker": "GOOGL", "name": "Sundar Pichai", "role": "CEO"},
-        {"ticker": "META", "name": "Mark Zuckerberg", "role": "CEO"},
-        {"ticker": "TSLA", "name": "Elon Musk", "role": "CEO"},
-        {"ticker": "AMD", "name": "Lisa Su", "role": "CEO"},
-        {"ticker": "AMZN", "name": "Andy Jassy", "role": "CEO"},
-        {"ticker": "ORCL", "name": "Safra Catz", "role": "CEO"},
-        {"ticker": "COIN", "name": "Brian Armstrong", "role": "CEO"},
-        {"ticker": "SQ", "name": "Jack Dorsey", "role": "CEO"},
-        {"ticker": "SHOP", "name": "Tobi Lutke", "role": "CEO"},
-    ]
-
-    insiders = []
-    for days_ago in range(1, 91):
-        if random.random() < 0.15:
-            company = random.choice(companies)
-            is_buy = random.random() > 0.35
-
-            shares = random.randint(10000, 100000) if is_buy else random.randint(20000, 150000)
-            price = round(random.uniform(100, 500), 2)
-            total_value = shares * price
-            ownership_change = round(random.uniform(0.5, 4.0), 1) if is_buy else -round(random.uniform(0.2, 2.0), 1)
-
-            if total_value > 20000000:
-                significance = "EXTREME"
-            elif total_value > 10000000:
-                significance = "HIGH"
-            elif total_value > 3000000:
-                significance = "MEDIUM"
-            else:
-                significance = "LOW"
-
-            trade_date = now - timedelta(days=days_ago)
-            filing_date = now - timedelta(days=days_ago - random.randint(1, 2))
-
-            if is_buy:
-                if significance == "EXTREME":
-                    signal = f"VERY BULLISH - {company['role']} accumulating large position"
-                elif significance == "HIGH":
-                    signal = "BULLISH - Strong insider confidence"
-                else:
-                    signal = "Positive - Insider accumulation"
-            else:
-                signal = "Large sale - monitor for reasons" if total_value > 15000000 else \
-                         "Routine sale - likely diversification"
-
-            insiders.append({
-                "ticker": company['ticker'],
-                "insider_name": company['name'],
-                "role": company['role'],
-                "transaction_type": "BUY" if is_buy else "SELL",
-                "shares": shares,
-                "price": price,
-                "total_value": int(total_value),
-                "date": trade_date.strftime("%Y-%m-%d"),
-                "filing_date": filing_date.strftime("%Y-%m-%d"),
-                "ownership_change": f"+{ownership_change}%" if is_buy else f"{ownership_change}%",
-                "significance": significance,
-                "smart_money_signal": signal,
-                "days_ago": days_ago,
-            })
-
-    return sorted(insiders, key=lambda x: x['days_ago'])
-
-
 def generate_smart_money_notifications():
-    """Derive notification-shaped events from the real (or fallback) insider trade data,
+    """Derive notification-shaped events from the real SEC Form 4 insider trade data,
     plus a small set of genuinely real recurring regulatory calendar facts."""
     now = datetime.now()
     top_trades = sorted(INSIDER_TRADES, key=lambda x: x.get("total_value", 0), reverse=True)[:9]
@@ -425,17 +368,22 @@ def generate_smart_money_notifications():
             "value": t["total_value"],
         })
 
+    # 13F-HR is due 45 days after each calendar quarter ends (SEC Rule 13f-1).
+    quarter_ends = [datetime(y, m, d) for y in (now.year - 1, now.year, now.year + 1)
+                    for m, d in ((3, 31), (6, 30), (9, 30), (12, 31))]
+    deadline = min(q + timedelta(days=45) for q in quarter_ends if q + timedelta(days=45) >= now.replace(hour=0, minute=0))
+    days_ahead = (deadline.date() - now.date()).days
     future_filings = [
         {
             "id": 100,
             "type": "13F Filing Deadline",
             "ticker": "ALL",
-            "title": "Quarterly 13F Filing Deadline Approaching",
-            "message": ("Institutional 13F filings are due 45 days after each quarter end - expect hedge fund "
-                        "position disclosures around that date."),
+            "title": f"Quarterly 13F Filing Deadline - {deadline.strftime('%b %d, %Y')}",
+            "message": ("Institutional managers with $100M+ must file 13F-HR within 45 days of quarter end - "
+                        "hedge fund and fund-manager position disclosures cluster in the days before."),
             "significance": "MEDIUM",
-            "timestamp": (now + timedelta(days=15)).isoformat(),
-            "days_ahead": 15,
+            "timestamp": deadline.isoformat(),
+            "days_ahead": days_ahead,
             "action": "WATCH",
             "expected": True,
         },
@@ -450,54 +398,12 @@ def generate_smart_money_notifications():
 
 
 def generate_news():
-    """Real RSS-aggregated market news. Falls back to illustrative sample data on total fetch failure."""
+    """Real RSS-aggregated market news. If every feed fails, keep the last real batch -
+    an empty feed is honest, invented headlines are not."""
     real_items = real_data.get_real_news(limit=30)
     if real_items:
         return [dict(item, id=idx + 1) for idx, item in enumerate(real_items)]
-    return _fallback_news()
-
-
-def _fallback_news():
-    news_items = [
-        {"title": "NVIDIA Announces Next-Gen AI Chips at GTC 2026", "source": "Reuters", "sentiment": "bullish",
-         "summary": "NVIDIA unveils Blackwell Ultra architecture with 3x performance gains", "tickers": "NVDA", "urgency": "high"},
-        {"title": "Fed Officials Signal Potential Rate Cut in Q4", "source": "Bloomberg", "sentiment": "bullish",
-         "summary": "FOMC members hint at dovish pivot amid cooling inflation", "tickers": "SPY,QQQ", "urgency": "breaking"},
-        {"title": "Tesla Robotaxi Event Draws Mixed Reactions", "source": "CNBC", "sentiment": "neutral",
-         "summary": "Analysts divided on feasibility of 2027 rollout timeline", "tickers": "TSLA", "urgency": "high"},
-        {"title": "Apple Vision Pro 2 Enters Mass Production", "source": "WSJ", "sentiment": "bullish",
-         "summary": "Suppliers report strong order volumes for Q1 2027 launch", "tickers": "AAPL", "urgency": "medium"},
-        {"title": "Crude Oil Surges on Middle East Tensions", "source": "MarketWatch", "sentiment": "bearish",
-         "summary": "WTI breaks $95/barrel as supply concerns mount", "tickers": "XLE,USO", "urgency": "breaking"},
-        {"title": "Microsoft Azure Revenue Beats Estimates", "source": "Reuters", "sentiment": "bullish",
-         "summary": "Cloud growth accelerates to 31% YoY on AI demand", "tickers": "MSFT", "urgency": "high"},
-        {"title": "Bitcoin Approaches $75K as ETF Inflows Surge", "source": "CoinDesk", "sentiment": "bullish",
-         "summary": "Spot Bitcoin ETFs see $2.1B in net inflows this week", "tickers": "BTC,MSTR", "urgency": "high"},
-        {"title": "Consumer Confidence Index Drops to 8-Month Low", "source": "Bloomberg", "sentiment": "bearish",
-         "summary": "Concerns over job market weigh on sentiment", "tickers": "SPY,XLY", "urgency": "medium"},
-        {"title": "AMD Gains Market Share in Data Center Chips", "source": "CNBC", "sentiment": "bullish",
-         "summary": "EPYC processors capture 24% of server CPU market", "tickers": "AMD", "urgency": "medium"},
-        {"title": "Treasury Yields Spike After Strong Jobs Data", "source": "Reuters", "sentiment": "neutral",
-         "summary": "10-year yield climbs to 4.35% on NFP beat", "tickers": "TLT,IEF", "urgency": "high"},
-    ]
-
-    news = []
-    now = datetime.now()
-    for idx, item in enumerate(news_items):
-        published = now - timedelta(hours=random.randint(1, 72))
-        news.append({
-            "id": idx + 1,
-            "title": item['title'],
-            "published_at": published.isoformat(),
-            "source": item['source'],
-            "sentiment": item['sentiment'],
-            "summary": item['summary'],
-            "tickers": item['tickers'],
-            "url": f"https://example.com/news/{idx+1}",
-            "urgency": item.get('urgency', 'medium'),
-        })
-
-    return sorted(news, key=lambda x: x['published_at'], reverse=True)
+    return NEWS
 
 
 def _all_news() -> List[Dict[str, Any]]:
@@ -604,34 +510,11 @@ def generate_signals():
 
 
 def generate_crypto():
-    """Real CoinGecko prices. Falls back to illustrative sample data on fetch failure."""
+    """Real CoinGecko prices; keeps the last real snapshot if CoinGecko is unreachable."""
     real_prices = real_data.get_crypto_prices()
     if real_prices:
         return real_prices
-    return _fallback_crypto()
-
-
-def _fallback_crypto():
-    cryptos = [
-        {"symbol": "BTC", "name": "Bitcoin", "price": 73250},
-        {"symbol": "ETH", "name": "Ethereum", "price": 3890},
-        {"symbol": "SOL", "name": "Solana", "price": 178},
-    ]
-    metrics = []
-    for idx, crypto in enumerate(cryptos):
-        change = round(random.uniform(-5, 8), 2)
-        metrics.append({
-            "id": idx + 1,
-            "symbol": crypto['symbol'],
-            "name": crypto['name'],
-            "price": crypto['price'] * (1 + change / 100),
-            "change_24h": change,
-            "market_cap": crypto['price'] * random.randint(18000000, 21000000),
-            "volume_24h": crypto['price'] * random.randint(20000000, 40000000),
-            "source": "CoinGecko",
-            "timestamp": datetime.now().isoformat(),
-        })
-    return metrics
+    return CRYPTO
 
 
 def _fear_greed_label(value: int) -> str:
@@ -647,44 +530,42 @@ def _fear_greed_label(value: int) -> str:
 
 
 def generate_sentiment():
-    """Real Fear & Greed / Reddit / VIX sentiment. Falls back to illustrative sample data per-source
-    on individual fetch failure - interpretation is always derived from the actual value, real or sample."""
+    """Real Fear & Greed / Reddit / VIX readings. A source that can't be reached is
+    simply left out (the Data Sources tab shows why) - never replaced by a random number."""
     indicators = []
+    now_iso = datetime.now().isoformat()
 
     fg = real_data.get_fear_greed()
     if fg:
         value = fg["value"]
-        interpretation = fg["rating"].title() if fg.get("rating") else _fear_greed_label(value)
-    else:
-        value = random.randint(45, 75)
-        interpretation = _fear_greed_label(value)
-    indicators.append({
-        "id": 1, "source": "CNN Fear & Greed Index", "timestamp": datetime.now().isoformat(),
-        "indicator_name": "Fear & Greed", "value": value, "interpretation": interpretation,
-        "affected_markets": "SPY,QQQ,DIA",
-    })
+        indicators.append({
+            "id": 1, "source": "CNN Fear & Greed Index", "timestamp": now_iso,
+            "indicator_name": "Fear & Greed", "value": value,
+            "interpretation": fg["rating"].title() if fg.get("rating") else _fear_greed_label(value),
+            "affected_markets": "SPY,QQQ,DIA",
+        })
 
     reddit = real_data.get_reddit_sentiment()
-    value = reddit["value"] if reddit else random.randint(55, 85)
-    indicators.append({
-        "id": 2, "source": "Reddit Sentiment", "timestamp": datetime.now().isoformat(),
-        "indicator_name": "Social Sentiment", "value": value,
-        "interpretation": "Very Bullish" if value >= 70 else "Bullish" if value >= 55 else
-                          "Neutral" if value >= 40 else "Bearish",
-        "affected_markets": "Meme stocks",
-    })
+    if reddit:
+        value = reddit["value"]
+        indicators.append({
+            "id": 2, "source": "Reddit Sentiment", "timestamp": now_iso,
+            "indicator_name": "Social Sentiment", "value": value,
+            "interpretation": "Very Bullish" if value >= 70 else "Bullish" if value >= 55 else
+                              "Neutral" if value >= 40 else "Bearish",
+            "affected_markets": "Meme stocks",
+        })
 
     vix = real_data.get_vix()
-    if vix is None:
-        vix = round(random.uniform(14, 22), 2)
-    indicators.append({
-        "id": 3, "source": "CBOE", "timestamp": datetime.now().isoformat(),
-        "indicator_name": "VIX", "value": vix,
-        "interpretation": "High volatility" if vix >= 25 else "Moderate volatility" if vix >= 18 else "Low volatility",
-        "affected_markets": "SPY,QQQ,VIX",
-    })
+    if vix is not None:
+        indicators.append({
+            "id": 3, "source": "CBOE", "timestamp": now_iso,
+            "indicator_name": "VIX", "value": vix,
+            "interpretation": "High volatility" if vix >= 25 else "Moderate volatility" if vix >= 18 else "Low volatility",
+            "affected_markets": "SPY,QQQ,VIX",
+        })
 
-    return indicators
+    return indicators or SENTIMENT
 
 
 _SCREENER_UNIVERSE = sorted(set(real_data.WATCHLIST) | set(backtest_engine._TICKERS))
@@ -896,7 +777,7 @@ def _backtest_by_category(backtest: dict) -> dict:
 
 def _populate_intel_data():
     """Runs once in a background thread at startup: populates all module-level
-    caches above from real (or honest fallback) sources, in dependency order."""
+    caches above from real sources (empty where a source is unreachable), in dependency order."""
     global NEWS, CRYPTO, SENTIMENT, INSIDER_TRADES, SIGNALS, SMART_MONEY_NOTIFICATIONS
     global AI_PREDICTIONS, DAILY_BRIEF
 
@@ -1118,22 +999,40 @@ def create_event(req: CreateEventRequest):
     """Create new event (manual or from data source)"""
 
     with get_db() as conn:
+        try:
+            datetime.fromisoformat(req.date)
+        except ValueError:
+            raise HTTPException(422, "date must be ISO format, e.g. 2026-10-28 or 2026-10-28T14:00")
         cursor = conn.execute("""
             INSERT INTO events
-            (title, description, date, event_type, affected_tickers, impact_score)
-            VALUES (?, ?, ?, ?, ?, ?)
+            (title, description, date, event_type, affected_tickers, impact_score, source)
+            VALUES (?, ?, ?, ?, ?, ?, 'manual')
         """, (
             req.title,
             req.description,
             req.date,
             req.event_type,
-            ",".join(req.affected_tickers) if req.affected_tickers else None,
+            ",".join(t.strip().upper() for t in req.affected_tickers if t.strip()) if req.affected_tickers else None,
             req.impact_score,
         ))
         conn.commit()
         event_id = cursor.lastrowid
 
     return {"id": event_id, "status": "created"}
+
+@app.delete("/api/events/{event_id}")
+def delete_event(event_id: int):
+    """Delete a hand-added event. Calendar-seeded events are rebuilt on every sync,
+    so they can't be deleted here."""
+    with get_db() as conn:
+        row = conn.execute("SELECT source FROM events WHERE id = ?", (event_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "Event not found")
+        if (row["source"] or "calendar") != "manual":
+            raise HTTPException(409, "Only manually added events can be deleted")
+        conn.execute("DELETE FROM events WHERE id = ?", (event_id,))
+        conn.commit()
+    return {"status": "deleted"}
 
 @app.get("/api/news/feed")
 def get_news_feed(limit: int = 50):
@@ -1218,38 +1117,60 @@ def create_alert_rule(req: AlertRuleRequest):
 
     return {"id": alert_id, "status": "created"}
 
+@app.get("/api/alerts")
+def list_alert_rules():
+    with get_db() as conn:
+        rows = conn.execute("SELECT * FROM alert_rules WHERE is_active = 1 ORDER BY id DESC").fetchall()
+    rules = []
+    for r in rows:
+        rule = dict(r)
+        rule["assets_filter"] = json.loads(rule["assets_filter"]) if rule.get("assets_filter") else None
+        rule["notification_channels"] = json.loads(rule["notification_channels"]) if rule.get("notification_channels") else []
+        rules.append(rule)
+    return {"rules": rules}
+
+@app.delete("/api/alerts/{rule_id}")
+def delete_alert_rule(rule_id: int):
+    with get_db() as conn:
+        cur = conn.execute("UPDATE alert_rules SET is_active = 0 WHERE id = ?", (rule_id,))
+        conn.commit()
+    if not cur.rowcount:
+        raise HTTPException(404, "Alert rule not found")
+    return {"status": "deleted"}
+
 @app.get("/api/alerts/triggered")
 def get_triggered_alerts():
-    """Get events matching active alert rules"""
+    """Events matching each active rule's day window, category and ticker filter."""
 
     with get_db() as conn:
-        # Get active rules
-        rules = conn.execute("""
-            SELECT * FROM alert_rules WHERE is_active = 1
-        """).fetchall()
+        rules = conn.execute("SELECT * FROM alert_rules WHERE is_active = 1").fetchall()
 
         triggered = []
         for rule in rules:
             rule_dict = dict(rule)
-            min_days = rule_dict['min_days_before']
-            max_days = rule_dict['max_days_before']
+            category = rule_dict.get("event_category")
+            assets = {a.upper() for a in json.loads(rule_dict["assets_filter"])} if rule_dict.get("assets_filter") else None
 
-            # Find matching events
             events = conn.execute("""
                 SELECT * FROM events
                 WHERE date(date) BETWEEN date('now', ? || ' days') AND date('now', ? || ' days')
-            """, (f"+{min_days}", f"+{max_days}")).fetchall()
+                ORDER BY date ASC
+            """, (f"+{rule_dict['min_days_before']}", f"+{rule_dict['max_days_before']}")).fetchall()
 
             for event in events:
                 event_dict = dict(event)
-                event_date = datetime.fromisoformat(event_dict['date'])
-                days_until = (event_date.date() - datetime.now().date()).days
-
+                if category and category != "all" and event_dict.get("event_type") != category:
+                    continue
+                tickers = set(_tickers(event_dict.get("affected_tickers")))
+                if assets and not (assets & tickers):
+                    continue
+                days_until = (datetime.fromisoformat(event_dict['date']).date() - datetime.now().date()).days
+                event_dict["affected_tickers"] = sorted(tickers)
                 triggered.append({
                     "rule_id": rule_dict['id'],
                     "event": event_dict,
                     "days_until": days_until,
-                    "message": f"{event_dict['title']} in {days_until} days"
+                    "message": f"{event_dict['title']} in {days_until} day{'s' if days_until != 1 else ''}"
                 })
 
     return {"triggered": triggered, "count": len(triggered)}
@@ -1423,15 +1344,120 @@ def get_volatility_endpoint():
         "last_update": datetime.now().isoformat(),
     }
 
+_SYMBOL_RE = re.compile(r"^[A-Z0-9.\-^=]{1,12}$")
+
+
+def _timing_verdict(next_event: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """One-line timing read for a ticker from its nearest dated catalyst - the same
+    rule-based phase system as the calendar, so it's exactly as reliable as the date."""
+    if not next_event:
+        return {"phase": None, "headline": "No dated catalyst in the next 90 days",
+                "detail": "Nothing on the calendar is tagged with this ticker, so there is no event to time around.",
+                "estimated_date": False}
+    phase, days = next_event["phase"], next_event["days_until"]
+    title = next_event["title"]
+    headline = {
+        "pre-rumor": f"Too early - {title} is D-{days}",
+        "accumulation": f"Accumulation window - {title} is D-{days}",
+        "euforia": f"Late - {title} is D-{days}",
+        "danger": f"Danger zone - {title} is D-{days}",
+        "live": f"{title} is today",
+    }.get(phase, f"{title} is D-{days}")
+    return {"phase": phase, "headline": headline, "detail": next_event["recommendation"],
+            "estimated_date": "estimated date" in title.lower()}
+
+
+@app.get("/api/ticker/{symbol}")
+def get_ticker_lens(symbol: str):
+    """Everything Intelligence knows about one ticker: dated catalysts with D-X phase,
+    news and Telegram mentions, 90-day insider trades, live signals, AI calls, and the
+    latest price. Built entirely from data the other endpoints already serve."""
+    tk = symbol.strip().upper()
+    if not _SYMBOL_RE.match(tk):
+        raise HTTPException(400, "invalid ticker")
+
+    end_date = datetime.now() + timedelta(days=90)
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT * FROM events
+            WHERE date(date) BETWEEN date('now') AND date(?)
+            ORDER BY date ASC
+        """, (end_date.date().isoformat(),)).fetchall()
+        stored_news = conn.execute("""
+            SELECT title, content, source, url, timestamp, affected_tickers, sentiment FROM news_feed
+            WHERE timestamp >= ? ORDER BY timestamp DESC LIMIT 500
+        """, ((datetime.now() - timedelta(days=30)).isoformat(),)).fetchall()
+
+    events = []
+    for row in rows:
+        event = dict(row)
+        tickers = _tickers(event["affected_tickers"])
+        if tk not in tickers:
+            continue
+        days_until = (datetime.fromisoformat(event["date"]).date() - datetime.now().date()).days
+        phase, color = _phase_for(days_until)
+        event.update(affected_tickers=tickers, days_until=days_until, phase=phase, phase_color=color,
+                     recommendation=_entry_exit_note(phase, days_until))
+        events.append(event)
+
+    word = re.compile(rf"(?<![A-Z0-9]){re.escape(tk)}(?![A-Z0-9])")
+    news, seen = [], set()
+    for n in _all_news():
+        if tk in _tickers(n.get("tickers")) or word.search(n.get("title", "")):
+            if n["title"] not in seen:
+                seen.add(n["title"])
+                news.append(n)
+    for r in stored_news:
+        n = dict(r)
+        if n["title"] in seen:
+            continue
+        if tk in _tickers(n.get("affected_tickers")) or word.search(n.get("title") or ""):
+            seen.add(n["title"])
+            news.append({"title": n["title"], "summary": n["content"], "source": n["source"], "url": n["url"],
+                         "published_at": n["timestamp"], "tickers": n["affected_tickers"], "sentiment": n["sentiment"]})
+    news.sort(key=lambda x: x.get("published_at") or "", reverse=True)
+
+    insider = history_db.get_insider_trades_since(days=90)
+    trades = [t for t in insider["trades"] if (t.get("ticker") or "").upper() == tk]
+    buys = [t for t in trades if t["transaction_type"] == "BUY"]
+    sells = [t for t in trades if t["transaction_type"] == "SELL"]
+
+    predictions = []
+    for category in _DIRECTIONAL_CATEGORIES + ["black_swan_monitors"]:
+        for item in AI_PREDICTIONS.get(category) or []:
+            if (item.get("ticker") or "").upper() == tk:
+                predictions.append({**item, "category": category})
+
+    sentiments = [n.get("sentiment") for n in news[:20]]
+    return {
+        "ticker": tk,
+        "price": real_data.get_current_price(tk),
+        "timing": _timing_verdict(events[0] if events else None),
+        "events": events,
+        "news": news[:40],
+        "news_tone": {s: sentiments.count(s) for s in ("bullish", "neutral", "bearish")},
+        "insider": {
+            "trades": trades,
+            "buys": len(buys), "sells": len(sells),
+            "buy_value": sum(t["total_value"] or 0 for t in buys),
+            "sell_value": sum(t["total_value"] or 0 for t in sells),
+        },
+        "signals": [s for s in SIGNALS if (s.get("ticker") or "").upper() == tk],
+        "predictions": predictions,
+        "ai_mode": (AI_PREDICTIONS.get("meta") or {}).get("mode"),
+        "last_update": datetime.now().isoformat(),
+    }
+
+
 @app.get("/api/telegram/breaking-news")
-def get_telegram_breaking_news_endpoint():
+def get_telegram_breaking_news_endpoint(limit: int = 300):
     """Real messages from the Tradeul_Breaking_News Telegram channel: a real backfilled
     history window (see status.history_window_days) plus anything arriving live."""
-    return {"messages": telegram_feed.get_recent(8000), "status": telegram_feed.get_status()}
+    return {"messages": telegram_feed.get_recent(max(1, min(limit, 5000))), "status": telegram_feed.get_status()}
 
 if __name__ == "__main__":
     import uvicorn
     host = os.environ.get("AEON_INTEL_HOST", "127.0.0.1")
-    port = int(os.environ.get("PORT", os.environ.get("AEON_INTEL_PORT", "8001")))
+    port = int(os.environ.get("PORT", os.environ.get("AEON_INTEL_PORT", "8003")))
     print(f"🚀 Starting Aeon Nimbus Intelligence API on {host}:{port}")
     uvicorn.run(app, host=host, port=port)

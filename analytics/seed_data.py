@@ -20,7 +20,7 @@ from datetime import datetime, timedelta
 import json
 import os
 
-DB_PATH = os.path.expanduser("~/.aeon/terminal.db")
+from database import DB_PATH  # honours AEON_ANALYTICS_DB_PATH, same as the API
 
 
 def _build_events():
@@ -145,7 +145,7 @@ def seed_database():
     """
     from sentiment_analyzer import analyze_market_event
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(str(DB_PATH))
     cursor = conn.cursor()
 
     cursor.execute("DELETE FROM market_events WHERE source = 'scheduled'")

@@ -115,6 +115,11 @@ def init_db():
             );
             CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, read);
         """)
+        # Alerts fire once: when one triggers it's switched off and stamped.
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(alerts)")}
+        if "triggered_at" not in cols:
+            conn.execute("ALTER TABLE alerts ADD COLUMN triggered_at TEXT")
+            conn.execute("ALTER TABLE alerts ADD COLUMN triggered_value REAL")
 
 
 def save_analysis(user_id: Optional[int], ticker: str, result: Dict[str, Any]) -> int:

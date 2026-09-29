@@ -12,6 +12,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 ENV PYTHONUNBUFFERED=1
-EXPOSE 8001
+EXPOSE 8003
 
-CMD ["sh", "-c", "uvicorn intelligence_service:app --host 0.0.0.0 --port ${PORT:-8001}"]
+CMD ["sh", "-c", "uvicorn intelligence_service:app --host 0.0.0.0 --port ${PORT:-8003}"]

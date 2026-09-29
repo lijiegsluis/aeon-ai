@@ -604,7 +604,10 @@ function handleCORS(request: Request, env: Env, response: Response): Response {
     const allowed = (env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim());
 
     // Support wildcard subdomains: *.aeonnimbus.pages.dev
-    const isAllowed = allowed.includes(origin) || allowed.includes('*') || /^https:\/\/[a-z0-9-]+\.aeonnimbus\.pages\.dev$/.test(origin);
+    // Local dev: the terminal is opened as either localhost or 127.0.0.1 on any Vite port.
+    const isLoopback = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+    const isAllowed =
+        allowed.includes(origin) || allowed.includes('*') || isLoopback || /^https:\/\/[a-z0-9-]+\.aeonnimbus\.pages\.dev$/.test(origin);
 
     const corsOrigin = isAllowed ? origin : allowed[0] || '*';
 
