@@ -24,10 +24,12 @@ jobs:
             - name: Analytics data layer
               working-directory: analytics
               env:
+                  PYTHONPATH: .
                   AEON_ANALYTICS_DB_PATH: /tmp/aeon/terminal.db
               run: python ../.github/scripts/smoke_analytics.py
             - name: Intelligence sources
               working-directory: intelligence/backend
               env:
+                  PYTHONPATH: .
                   AEON_INTEL_DB_PATH: /tmp/aeon/intelligence.db
               run: python ../../.github/scripts/smoke_intelligence.py
