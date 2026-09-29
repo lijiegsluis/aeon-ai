@@ -313,7 +313,14 @@ def dcf(ticker: str):
 
     scenarios = {}
     for name, g in growth_map.items():
-        flows = [fcf * (1 + g) ** yr for yr in range(1, 11)]
+        # Two-stage: the scenario growth rate for years 1-5, then a straight-line
+        # fade to terminal growth by year 10 — compounding even 25% for a full
+        # decade produced fair values several times the price for mega-caps.
+        flows, cf = [], fcf
+        for yr in range(1, 11):
+            rate = g if yr <= 5 else g + (tg - g) * (yr - 5) / 5
+            cf *= 1 + rate
+            flows.append(cf)
         pv = sum(c / (1 + wacc) ** yr for yr, c in enumerate(flows, 1))
         terminal = flows[-1] * (1 + tg) / (wacc - tg) / (1 + wacc) ** 10
         fair = (pv + terminal) / shares
@@ -708,8 +715,8 @@ def fusion_valuation(ticker: str):
     try:
         d = dcf(t)
         models["dcf"] = {"value": d["scenarios"]["base"]["fairValue"],
-                         "philosophy": f"10Y discounted free cash flow, base growth {d['scenarios']['base']['growth']*100:.1f}%, "
-                                       f"WACC {d['wacc']*100:.1f}%"}
+                         "philosophy": f"10Y discounted free cash flow, {d['scenarios']['base']['growth']*100:.1f}% growth "
+                                       f"fading to terminal after year 5, WACC {d['wacc']*100:.1f}%"}
     except HTTPException:
         pass
     # 2. Graham number — Research worker's philosophy
@@ -767,9 +774,23 @@ def stooq_quote(ticker: str) -> float | None:
         return None
 
 
+def nasdaq_quote(ticker: str) -> float | None:
+    """Last sale from Nasdaq's public quote API — an upstream independent of Yahoo
+    (Stooq, the original cross-check, now serves a CAPTCHA to most clients)."""
+    try:
+        r = md._get(f"https://api.nasdaq.com/api/quote/{ticker.upper()}/info",
+                    params={"assetclass": "stocks"}, timeout=10)
+        data = (r.json() or {}).get("data") or {}
+        raw = ((data.get("primaryData") or {}).get("lastSalePrice") or "").replace("$", "").replace(",", "")
+        price = float(raw) if raw else None
+        return price if price and price > 0 else None
+    except Exception:
+        return None
+
+
 @app.get("/fusion/quote/{ticker}")
 def fusion_quote(ticker: str):
-    """Cross-source integrity check. yfinance-direct and Stooq are two
+    """Cross-source integrity check. Yahoo and Nasdaq (Stooq as a backup) are
     genuinely independent upstreams (separate companies, separate data
     pipelines) — that's the actual verification. OpenBB is surfaced as a
     third opinion when reachable, but excluded from the independence check
@@ -785,10 +806,15 @@ def fusion_quote(ticker: str):
         yahoo = "yahoo-chart" if i.get("_source") == "yahoo-chart" else "yfinance-direct"
         sources[yahoo] = f(p1)
         independent.append(yahoo)
-    p2 = stooq_quote(t)
+    p2 = nasdaq_quote(t)
     if p2:
-        sources["stooq"] = f(p2)
-        independent.append("stooq")
+        sources["nasdaq"] = f(p2)
+        independent.append("nasdaq")
+    else:
+        p2 = stooq_quote(t)
+        if p2:
+            sources["stooq"] = f(p2)
+            independent.append("stooq")
     try:
         r = http.get("http://127.0.0.1:6900/api/v1/equity/price/quote",
                      params={"provider": "yfinance", "symbol": t}, timeout=10)
@@ -802,14 +828,14 @@ def fusion_quote(ticker: str):
     if len(indep_vals) < 2:
         return {"ticker": t, "sources": sources, "verified": None,
                 "note": "fewer than two independent sources reachable — cannot cross-check",
-                "methodology": "yfinance-direct and Stooq are the two independent upstreams checked; "
+                "methodology": "Yahoo (yfinance or its chart API) and Nasdaq (Stooq as a backup) are the independent upstreams checked; "
                                 "OpenBB is informational only when it's backed by the yfinance provider."}
     spread_bps = f(10000 * abs(indep_vals[0] - indep_vals[1]) / indep_vals[0], 1)
     return {"ticker": t, "sources": sources, "spreadBps": spread_bps,
             "verified": spread_bps < 50,
             "note": ("independent sources (yfinance, Stooq) agree" if spread_bps < 50
                      else "independent sources disagree — data may be stale on one side"),
-            "methodology": "yfinance-direct and Stooq are the two independent upstreams checked; "
+            "methodology": "Yahoo (yfinance or its chart API) and Nasdaq (Stooq as a backup) are the independent upstreams checked; "
                             "OpenBB is informational only when it's backed by the yfinance provider."}
 
 

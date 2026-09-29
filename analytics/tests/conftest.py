@@ -48,6 +48,7 @@ def offline_market(monkeypatch):
                         lambda syms, period="2y": pd.DataFrame({s: fake_history(s, period)["Close"] for s in syms}))
     import main
     monkeypatch.setattr(main, "stooq_quote", lambda t: None)
+    monkeypatch.setattr(main, "nasdaq_quote", lambda t: None)
     yield
 
 

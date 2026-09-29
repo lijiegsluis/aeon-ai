@@ -28,7 +28,14 @@ def test_montecarlo_and_markowitz(client):
 
 def test_fusion_ensemble_labels_real_growth(client):
     e = client.get("/fusion/valuation/AAPL").json()
-    assert "dcf" in e["models"] and "8.0%" in e["models"]["dcf"]["philosophy"]
+    assert "dcf" in e["models"] and "8.0% growth fading" in e["models"]["dcf"]["philosophy"]
+
+
+def test_price_cross_check_uses_an_independent_source(client, monkeypatch):
+    import main
+    monkeypatch.setattr(main, "nasdaq_quote", lambda t: 200.4)
+    q = client.get("/fusion/quote/AAPL").json()
+    assert q["sources"] == {"yfinance-direct": 200.0, "nasdaq": 200.4} and q["verified"] is True
 
 
 def test_thesis_gate_rejects_path_traversal(client):

@@ -30,6 +30,12 @@ SEC_UA = f"AeonIntelligence research {os.environ.get('SEC_CONTACT_EMAIL', 'conta
 
 _SESSION = requests.Session()
 
+try:  # browser TLS fingerprint for hosts that 403/429 plain HTTP clients from cloud IPs
+    from curl_cffi import requests as _browser
+except ImportError:  # pragma: no cover
+    _browser = None
+_BROWSER_HOSTS = ("finance.yahoo.com", "bls.gov", "coingecko.com")
+
 # Real, accumulated-since-process-start per-source call outcomes - never
 # randomized or backfilled. Powers /api/sources/status. Keyed by the caller's
 # own source_name, not by URL, so multiple RSS feeds etc. show up distinctly.
@@ -72,7 +78,12 @@ def get_source_status() -> Dict[str, Dict[str, Any]]:
 def _get(url: str, headers: Optional[Dict[str, str]] = None, params: Optional[Dict[str, Any]] = None,
           timeout: float = 8.0, source_name: Optional[str] = None) -> Optional[requests.Response]:
     try:
-        resp = _SESSION.get(url, headers=headers, params=params, timeout=timeout)
+        if _browser is not None and any(h in url for h in _BROWSER_HOSTS):
+            # let curl_cffi send a real browser's headers; only keep non-UA extras
+            extra = {k: v for k, v in (headers or {}).items() if k.lower() != "user-agent"}
+            resp = _browser.get(url, headers=extra or None, params=params, timeout=timeout, impersonate="chrome")
+        else:
+            resp = _SESSION.get(url, headers=headers, params=params, timeout=timeout)
         if resp.status_code == 200:
             if source_name:
                 _record_status(source_name, True, resp.status_code)
@@ -680,10 +691,12 @@ def parse_fomc_calendar(html: str) -> Dict[int, List[datetime]]:
         year = int(m.group(1))
         body = text[m.end(): blocks[i + 1].start() if i + 1 < len(blocks) else len(text)]
         dates = []
-        pat = rf"\b({_MONTH_RE})(?:\s*/\s*({_MONTH_RE}))?\s+(\d{{1,2}})(?:\s*-\s*(\d{{1,2}}))?\*?"
+        # Scheduled meetings are always two-day ranges ("January 27-28"); single dates
+        # elsewhere on the page are notation votes, minutes releases and the like.
+        pat = rf"\b({_MONTH_RE})(?:\s*/\s*({_MONTH_RE}))?\s+(\d{{1,2}})\s*[-\u2013]\s*(\d{{1,2}})\*?"
         for mm in re.finditer(pat, body):
             start_day = int(mm.group(3))
-            day = int(mm.group(4) or start_day)
+            day = int(mm.group(4))
             # "April/May 28-29" is all April; only a wrapped range ("October/November 31-1")
             # ends in the second month.
             month = mm.group(2) if mm.group(2) and day < start_day else mm.group(1)
@@ -692,6 +705,9 @@ def parse_fomc_calendar(html: str) -> Dict[int, List[datetime]]:
             except ValueError:
                 continue
         dates = sorted(set(dates))
+        # A meeting is listed once per year; drop repeats within a week (e.g. a
+        # rescheduled meeting shown next to its original date).
+        dates = [d for i, d in enumerate(dates) if i == 0 or (d - dates[i - 1]).days > 7]
         if 4 <= len(dates) <= 12:  # anything else means the parse went wrong
             out[year] = dates
     return out

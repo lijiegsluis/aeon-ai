@@ -48,7 +48,8 @@ def test_untagged_headline_is_not_pinned_on_spy():
 
 
 def test_fomc_parser_handles_cross_month_and_sep_asterisks():
-    html = ("<h4>2027 FOMC Meetings</h4><strong>January</strong> 26-27 <strong>March</strong> 16-17* "
+    html = ("<h4>2027 FOMC Meetings</h4><strong>January</strong> 26-27 <p>Notation vote January 26</p> "
+            "<strong>March</strong> 16-17* "
             "<strong>April/May</strong> 27-28 <strong>June</strong> 15-16* <strong>July</strong> 27-28 "
             "<strong>October/November</strong> 31-1 <strong>December</strong> 7-8*")
     dates = real_data.parse_fomc_calendar(html)[2027]

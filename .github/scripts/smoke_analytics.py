@@ -19,6 +19,10 @@ check("info", lambda: {k: md.info("NVDA").get(k) for k in ("currentPrice", "regu
 check("chart-only quote", lambda: md._info_from_chart("SPY"))
 print("fallback errors:", md.LAST_ERROR)
 
+import main as _main  # noqa: E402
+
+check("nasdaq cross-check quote", lambda: _main.nasdaq_quote("AAPL"))
+
 from fastapi.testclient import TestClient  # noqa: E402
 import main  # noqa: E402
 
