@@ -35,3 +35,6 @@ jobs:
                   PYTHONPATH: .
                   AEON_INTEL_DB_PATH: /tmp/aeon/intelligence.db
               run: python ../../.github/scripts/smoke_intelligence.py
+            - name: Probe candidate sources
+              working-directory: intelligence/backend
+              run: python ../../.github/scripts/probe_sources.py
