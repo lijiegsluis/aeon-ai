@@ -1424,3 +1424,142 @@ body {
     grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
     gap: 20px;
 }
+
+/* ── Alpha ───────────────────────────────────────────────── */
+.edge-badge {
+    margin-top: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    color: var(--success);
+}
+.strategy-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 16px;
+}
+.strategy-card {
+    padding: 18px 20px;
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--text-dim);
+    border-radius: 14px;
+    background: linear-gradient(180deg, var(--panel), var(--panel-2));
+}
+.strategy-card.verdict-edge {
+    border-top-color: var(--success);
+}
+.strategy-card.verdict-weak {
+    border-top-color: var(--warning);
+}
+.strategy-card.verdict-none {
+    border-top-color: var(--danger);
+}
+.strategy-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: baseline;
+}
+.strategy-head h3 {
+    font-size: 15px;
+    font-weight: 700;
+}
+.strategy-verdict {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-align: right;
+}
+.verdict-edge .strategy-verdict {
+    color: var(--success);
+}
+.verdict-none .strategy-verdict {
+    color: var(--danger);
+}
+.strategy-thesis {
+    margin: 8px 0 14px;
+    font-size: 12.5px;
+    color: var(--text-dim);
+}
+.strategy-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+}
+.strategy-stats > div {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.stat-num {
+    font-family: var(--mono);
+    font-size: 17px;
+    font-weight: 700;
+}
+.strategy-rules {
+    font-size: 11.5px;
+    color: var(--text-dim);
+    line-height: 1.6;
+}
+.strategy-toggle {
+    margin-top: 10px;
+    background: none;
+    border: 0;
+    color: var(--gold);
+    font-family: var(--mono);
+    font-size: 11px;
+    cursor: pointer;
+    padding: 0;
+}
+.strategy-card .mini-table {
+    width: 100%;
+    margin-top: 10px;
+    font-family: var(--mono);
+    font-size: 11px;
+}
+.strategy-card .mini-table th,
+.strategy-card .mini-table td {
+    padding: 4px 6px;
+    text-align: left;
+}
+.equity-wrap {
+    margin-top: 18px;
+    padding: 14px 16px 10px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: linear-gradient(180deg, var(--panel), var(--panel-2));
+}
+.equity-chart {
+    width: 100%;
+    height: auto;
+    display: block;
+    cursor: crosshair;
+}
+.equity-line {
+    fill: none;
+    stroke: var(--gold);
+    stroke-width: 2;
+}
+.equity-zero {
+    stroke: rgba(255, 255, 255, 0.18);
+    stroke-dasharray: 3 3;
+}
+.equity-cross {
+    stroke: rgba(255, 255, 255, 0.25);
+}
+.equity-dot {
+    fill: var(--gold-bright);
+    stroke: var(--panel);
+    stroke-width: 2;
+}
+.equity-axis {
+    fill: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 10px;
+}
+.equity-readout {
+    margin-top: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+}

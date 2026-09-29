@@ -42,3 +42,11 @@ jobs:
                   PYTHONPATH: .
                   AEON_INTEL_DB_PATH: /tmp/aeon/intelligence.db
               run: python ../../.github/scripts/smoke_alpha.py
+            - name: Alpha variant study
+              if: github.event_name == 'workflow_dispatch'
+              working-directory: intelligence/backend
+              timeout-minutes: 30
+              env:
+                  PYTHONPATH: .
+                  AEON_INTEL_DB_PATH: /tmp/aeon/intelligence.db
+              run: python ../../.github/scripts/explore_alpha.py

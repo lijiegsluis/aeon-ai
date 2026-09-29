@@ -27,6 +27,7 @@ import telegram_feed
 import backtest_engine
 import calendar_sync
 import alpha_engine
+import ai_engine
 import alpha_data
 from prediction_engine import generate_ai_predictions, generate_daily_brief
 
@@ -690,6 +691,15 @@ def _build_ai_context() -> Dict[str, Any]:
         "crypto": CRYPTO,
     }
     try:
+        st = alpha_engine.get_state()
+        context["alpha"] = {
+            "signals": st.get("signals") or [],
+            "strategies": {k: {kk: vv for kk, vv in v.items() if kk != "events"}
+                           for k, v in (st.get("backtests") or {}).items()},
+        }
+    except Exception as e:
+        print(f"[ai_context] alpha failed, omitting: {e}")
+    try:
         context["upcoming_events"] = _upcoming_events_for_context()
     except Exception as e:
         print(f"[ai_context] upcoming_events failed, omitting: {e}")
@@ -731,7 +741,7 @@ def _build_pending_resolutions(predictions: Dict[str, Any]) -> List[Dict[str, An
     without a ticker, a clear bullish/bearish direction (via real_data's own keyword
     classifier), or a real fetchable current price. Never scores demo/illustrative
     predictions as if they were real calls."""
-    if (predictions.get("meta") or {}).get("mode") != "live":
+    if (predictions.get("meta") or {}).get("mode") not in ("live", "rules"):
         return []
 
     now = datetime.now()
@@ -742,7 +752,7 @@ def _build_pending_resolutions(predictions: Dict[str, Any]) -> List[Dict[str, An
             if not ticker:
                 continue
             text = " ".join(str(item.get(k, "")) for k in ("action", "prediction", "reasoning"))
-            direction = real_data._classify_sentiment(text)
+            direction = item.get("direction") or real_data._classify_sentiment(text)
             if direction == "neutral":
                 continue
             entry_price = real_data.get_current_price(ticker)
@@ -896,6 +906,18 @@ def _start_intel_data():
         backtest_engine.start_background()
     except Exception as e:
         print(f"[backtest_engine] failed to start: {e}")
+    def _rebuild_rules_outputs():
+        # LLM runs stay on their own (rate-limited) schedule; rule-based outputs are cheap,
+        # so rebuild them as soon as the alpha engine has new signals.
+        global AI_PREDICTIONS, DAILY_BRIEF
+        if ai_engine.available():
+            return
+        context = _build_ai_context()
+        AI_PREDICTIONS = _persist_and_annotate_predictions(generate_ai_predictions(context))
+        DAILY_BRIEF = generate_daily_brief(context)
+        history_db.save_daily_brief(DAILY_BRIEF)
+
+    alpha_engine.on_refresh.append(_rebuild_rules_outputs)
     try:
         alpha_engine.start_background()
     except Exception as e:

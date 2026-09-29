@@ -69,6 +69,8 @@ MIN_SAMPLE = 20  # fewer events than this and we don't call anything an edge
 
 _state: Dict[str, Any] = {"signals": [], "backtests": {}, "generated_at": None, "backtested_at": None,
                           "status": "not_started", "errors": {}}
+# Called after every refresh (e.g. to rebuild the rule-based brief from the new signals).
+on_refresh: List[Callable[[], None]] = []
 _lock = threading.Lock()
 
 
@@ -175,10 +177,11 @@ def summarize(events: List[Dict[str, Any]]) -> Dict[str, Any]:
 PriceFn = Callable[[str], List[Dict[str, Any]]]
 
 
-def backtest_insider(clusters, prices: PriceFn, spy, hold: int = 20) -> List[Dict[str, Any]]:
+def backtest_insider(clusters, prices: PriceFn, spy, hold: int = 20, min_value: float = 100_000,
+                     min_insiders: int = 2, min_price: float = 2) -> List[Dict[str, Any]]:
     out = []
     for c in clusters:
-        if (c.get("value") or 0) < 100_000 or (c.get("price") or 0) < 2 or c.get("insiders", 0) < 2:
+        if (c.get("value") or 0) < min_value or (c.get("price") or 0) < min_price or c.get("insiders", 0) < min_insiders:
             continue
         if "P" not in (c.get("trade_type") or "P"):
             continue
@@ -206,20 +209,22 @@ def _reaction_index(bars, row) -> Optional[int]:
     return i if i < len(bars) else None
 
 
-def pead_candidate(row) -> bool:
-    return ((row.get("surprise_pct") or 0) >= 10 and abs(row.get("eps_forecast") or 0) >= 0.05
-            and (row.get("market_cap") or 0) >= 2e9)
+def pead_candidate(row, min_surprise: float = 10, min_mcap: float = 2e9) -> bool:
+    return ((row.get("surprise_pct") or 0) >= min_surprise and abs(row.get("eps_forecast") or 0) >= 0.05
+            and (row.get("market_cap") or 0) >= min_mcap)
 
 
-def backtest_pead(rows, prices: PriceFn, spy, hold: int = 20, limit: int = 150) -> List[Dict[str, Any]]:
-    cands = sorted([r for r in rows if pead_candidate(r)], key=lambda r: -(r.get("market_cap") or 0))[:limit]
+def backtest_pead(rows, prices: PriceFn, spy, hold: int = 20, limit: int = 150, min_surprise: float = 10,
+                  min_reaction: float = 0.0, min_mcap: float = 2e9) -> List[Dict[str, Any]]:
+    cands = sorted([r for r in rows if pead_candidate(r, min_surprise, min_mcap)],
+                   key=lambda r: -(r.get("market_cap") or 0))[:limit]
     out = []
     for r in cands:
         bars = prices(r["symbol"])
         if not bars:
             continue
         i = _reaction_index(bars, r)
-        if i is None or i < 1 or bars[i]["close"] <= bars[i - 1]["close"]:
+        if i is None or i < 1 or bars[i]["close"] <= bars[i - 1]["close"] * (1 + min_reaction / 100):
             continue  # the rule needs a positive first reaction
         res = _event_result(r["symbol"], bars, spy, i, i + hold, r["date"],
                             {"surprise_pct": r["surprise_pct"], "company": r.get("name")})
@@ -238,16 +243,23 @@ def runup_window(bars, row, lead: int = 10) -> Optional[tuple]:
     return (entry_i, exit_i) if entry_i >= 0 else None
 
 
-def backtest_runup(rows, prices: PriceFn, spy, limit: int = 150) -> List[Dict[str, Any]]:
-    cands = sorted([r for r in rows if (r.get("market_cap") or 0) >= 10e9 and r.get("eps_actual") is not None],
+def _above_ma(bars, i: int, n: int = 50) -> bool:
+    if i < n:
+        return False
+    return bars[i]["close"] > sum(b["close"] for b in bars[i - n:i]) / n
+
+
+def backtest_runup(rows, prices: PriceFn, spy, limit: int = 150, lead: int = 10, min_mcap: float = 10e9,
+                   trend: bool = False) -> List[Dict[str, Any]]:
+    cands = sorted([r for r in rows if (r.get("market_cap") or 0) >= min_mcap and r.get("eps_actual") is not None],
                    key=lambda r: -(r.get("market_cap") or 0))[:limit]
     out = []
     for r in cands:
         bars = prices(r["symbol"])
         if not bars:
             continue
-        w = runup_window(bars, r)
-        if not w:
+        w = runup_window(bars, r, lead)
+        if not w or (trend and not _above_ma(bars, w[0])):
             continue
         res = _event_result(r["symbol"], bars, spy, w[0], w[1], r["date"], {"company": r.get("name")})
         if res:
@@ -550,6 +562,11 @@ def refresh(full: bool = False) -> None:
     with _lock:
         _state.update(signals=sigs, generated_at=datetime.now().isoformat(timespec="seconds"),
                       status="ready" if not errors.get("signals") else "degraded", errors=errors)
+    for cb in list(on_refresh):
+        try:
+            cb()
+        except Exception as e:
+            print(f"[alpha_engine] on_refresh callback failed: {e}")
 
 
 def get_state() -> Dict[str, Any]:

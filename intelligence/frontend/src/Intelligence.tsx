@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import './Intelligence.css';
 import TickerLens from './TickerLens';
+import AlphaView from './AlphaView';
 import { formatEventDate, timeAgo } from './format';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8003';
@@ -198,7 +199,7 @@ interface DailyBrief {
         institutional_flow: string;
         cluster_buying_alerts: string;
     };
-    mode?: 'live' | 'demo';
+    mode?: 'live' | 'rules' | 'demo';
     data_edge?: string;
     demo_note?: string;
 }
@@ -249,6 +250,8 @@ interface AIPredictions {
         confidence_calibration: string;
         total_data_sources: number;
         training_data: string;
+        mode?: 'live' | 'rules' | 'demo';
+        note?: string | null;
     };
     high_confidence_predictions: AIPrediction[];
     pattern_based_predictions: AIPrediction[];
@@ -378,6 +381,7 @@ interface InsiderTrades90Response {
 
 type ViewType =
     | 'ticker'
+    | 'alpha'
     | 'overview'
     | 'live'
     | 'signals'
@@ -570,6 +574,10 @@ function Intelligence() {
                         <span className="nav-glyph">◆</span>
                         <span>OVERVIEW</span>
                     </button>
+                    <button className={view === 'alpha' ? 'active' : ''} onClick={() => setView('alpha')}>
+                        <span className="nav-glyph">α</span>
+                        <span>ALPHA</span>
+                    </button>
                     <button className={view === 'ticker' ? 'active' : ''} onClick={() => setView('ticker')}>
                         <span className="nav-glyph">⌖</span>
                         <span>TICKER LENS{lensTicker ? ` · ${lensTicker}` : ''}</span>
@@ -629,6 +637,7 @@ function Intelligence() {
 
             <main className="terminal-main">
                 {view === 'ticker' && <TickerLens apiBase={API_BASE} ticker={lensTicker} onTicker={openLens} />}
+                {view === 'alpha' && <AlphaView apiBase={API_BASE} onTicker={openLens} />}
                 {view === 'overview' && (
                     <div className="terminal-view">
                         <div className="view-header">
@@ -1295,14 +1304,14 @@ function Intelligence() {
                             <div
                                 className="data-block"
                                 style={{
-                                    borderLeft: `4px solid ${dailyBrief.mode === 'live' ? '#00ff88' : '#ffa500'}`,
+                                    borderLeft: `4px solid ${dailyBrief.mode === 'demo' ? '#ffa500' : '#00ff88'}`,
                                     padding: '12px 16px',
                                 }}
                             >
-                                <span style={{ color: dailyBrief.mode === 'live' ? '#00ff88' : '#ffa500', fontWeight: 700 }}>
-                                    {dailyBrief.mode === 'live' ? 'LIVE' : 'DEMO'}:
+                                <span style={{ color: dailyBrief.mode === 'demo' ? '#ffa500' : '#00ff88', fontWeight: 700 }}>
+                                    {dailyBrief.mode === 'live' ? 'LIVE' : dailyBrief.mode === 'rules' ? 'RULES' : 'DEMO'}:
                                 </span>{' '}
-                                {dailyBrief.mode === 'live' ? dailyBrief.data_edge : dailyBrief.demo_note}
+                                {dailyBrief.mode === 'demo' ? dailyBrief.demo_note : dailyBrief.data_edge}
                             </div>
                         )}
 
@@ -1679,6 +1688,7 @@ function Intelligence() {
                                     <strong>Calibration:</strong> {aiPredictions.meta.confidence_calibration}
                                 </span>
                             </div>
+                            {aiPredictions.meta.note && <p className="text-muted lens-note">{aiPredictions.meta.note}</p>}
                         </div>
 
                         {aiPredictions.prediction_accuracy_stats && (
@@ -2075,7 +2085,9 @@ function Intelligence() {
                                         <h3>{risk.risk_type} Risk</h3>
                                         <div className="rec-targets">
                                             <span className="text-danger stat-big">
-                                                Probability: {((risk.probability ?? 0) * 100).toFixed(1)}%
+                                                {risk.probability != null
+                                                    ? `Probability: ${(risk.probability * 100).toFixed(1)}%`
+                                                    : 'Monitor (no probability estimated)'}
                                             </span>
                                         </div>
                                     </div>

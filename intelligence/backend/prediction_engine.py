@@ -2,9 +2,9 @@
 Aeon Intelligence - AI Prediction Engine
 
 Tries a real, grounded LLM call (via ai_engine, free-tier Groq/Gemini) using
-real market data collected elsewhere in the app. Falls back to a clearly
-labeled static/demo generator when no AI key is configured or the live call
-fails, so the app never silently presents illustrative content as real.
+real market data collected elsewhere in the app. Without a key (or when the call
+fails) it uses rules_brief: the same real data turned into a brief and dated,
+gradeable predictions by fixed rules — never placeholder content.
 """
 
 import json
@@ -13,6 +13,7 @@ from typing import Dict, List, Any, Optional
 
 import ai_engine
 import history_db
+import rules_brief
 
 PREDICTIONS_SYSTEM_PROMPT = """You are a market analyst for Aeon Intelligence. You are given `real_market_data`: \
 actual, current facts (real news headlines, real SEC Form 4 insider trades, real sentiment/VIX readings, real \
@@ -101,27 +102,24 @@ class AeonPredictionEngine:
             mode = "live"
             note = None
         else:
-            predictions = {
-                "high_confidence_predictions": self._generate_high_confidence(),
-                "pattern_based_predictions": self._generate_pattern_based(),
-                "causal_predictions": self._generate_causal_chain(),
-                "contrarian_predictions": self._generate_contrarian(),
-                "black_swan_monitors": self._generate_tail_risk(),
-            }
-            mode = "demo"
-            note = ("No AI provider configured (set GROQ_API_KEY or GEMINI_API_KEY in backend/.env) or the live "
-                    "call failed - showing illustrative sample predictions, not live analysis.")
+            # No LLM (or it failed): rule-based predictions from the alpha engine's signals —
+            # real, dated and graded against real prices like the LLM ones.
+            predictions = rules_brief.predictions(context or {}, (context or {}).get("alpha") or {})
+            mode = "rules"
+            note = ("Rule-based predictions (no LLM configured): each one is an alpha-engine signal with its "
+                    "backtested hit rate as the confidence. Set GROQ_API_KEY or GEMINI_API_KEY for LLM analysis.")
 
         predictions["meta"] = {
             "generated_at": datetime.now().isoformat(),
-            "model_version": "Aeon-live-v1" if mode == "live" else "Aeon-demo-v1",
+            "model_version": {"live": "Aeon-live-v1", "rules": "Aeon-rules-v1"}.get(mode, "Aeon-demo-v1"),
             "prediction_horizon": "30 days",
             "confidence_calibration": self._calibration_description(mode),
             "total_data_sources": self._count_data_sources(context),
             "training_data": ("Grounded in real-time news, real SEC Form 4 insider filings, real sentiment/VIX "
                                "readings, and real crypto prices, reasoned over by a free-tier LLM (Groq/Gemini)"
                                if mode == "live" else
-                               "Demo mode - illustrative sample data, not derived from any live model or data feed"),
+                               "Deterministic rules over real data: alpha-engine signals (insider clusters, earnings "
+                               "drift and run-ups, extreme fear) with confidence taken from each strategy's backtest"),
             "mode": mode,
             "note": note,
         }
@@ -131,7 +129,7 @@ class AeonPredictionEngine:
     def _calibration_description(self, mode: str) -> str:
         """Real calibration status once at least one live prediction has resolved against a
         real fetched price; the honest 'not yet calibrated' message until then."""
-        if mode != "live":
+        if mode not in ("live", "rules"):
             return "N/A - demo mode"
         try:
             stats = history_db.get_calibration_stats(days=30)
@@ -150,7 +148,7 @@ class AeonPredictionEngine:
         """Honest count of real-data categories actually fed into this prediction, not a fabricated number."""
         if not context:
             return 0
-        return sum(1 for key in ("news", "insider_trades", "sentiment", "crypto",
+        return sum(1 for key in ("news", "insider_trades", "sentiment", "crypto", "alpha",
                                   "upcoming_events", "macro", "screener") if context.get(key))
 
     def generate_daily_brief(self, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -166,11 +164,8 @@ class AeonPredictionEngine:
             brief.setdefault("data_edge", "Generated just now from live real data (real news, real SEC Form 4 "
                                            "filings, real sentiment, real crypto prices) via a free-tier LLM.")
         else:
-            brief = self._static_daily_brief()
-            brief["mode"] = "demo"
-            brief["demo_note"] = ("No AI provider configured or the live brief generation failed - showing an "
-                                   "illustrative sample brief, not live analysis. Set GROQ_API_KEY or "
-                                   "GEMINI_API_KEY in backend/.env to enable live briefs.")
+            brief = rules_brief.daily_brief(context or {}, (context or {}).get("alpha") or {})
+            brief["mode"] = "rules"
 
         brief["date"] = now.strftime("%A, %B %d, %Y")
         brief["generated_at"] = now.isoformat()
@@ -185,95 +180,6 @@ class AeonPredictionEngine:
                 if isinstance(item, dict) and not isinstance(item.get("data_sources"), list):
                     item["data_sources"] = []
         return brief
-
-    def _generate_high_confidence(self) -> List[Dict]:
-        return [
-            {
-                "prediction_id": "HC001-DEMO",
-                "type": "EARNINGS_BEAT",
-                "ticker": "NVDA",
-                "prediction": "Sample: NVDA earnings beat with guidance raise",
-                "confidence": 0.7,
-                "timeframe": "48 hours",
-                "supporting_signals": ["This is illustrative sample content, not a live prediction"],
-                "reasoning": "Demo mode - no AI provider configured or the live call failed.",
-                "adversarial_test": "N/A - demo content",
-                "action": "Configure GROQ_API_KEY or GEMINI_API_KEY for live predictions"
-            }
-        ]
-
-    def _generate_pattern_based(self) -> List[Dict]:
-        return [
-            {
-                "prediction_id": "PTN001-DEMO",
-                "pattern_type": "SEASONAL",
-                "ticker": "Energy Sector (XLE)",
-                "prediction": "Sample: seasonal energy sector pattern",
-                "confidence": 0.65,
-                "historical_precedent": "This is illustrative sample content, not a live prediction",
-                "supporting_data": ["Demo mode - configure an AI key for live pattern analysis"],
-                "predicted_move": "N/A - demo content",
-                "action": "Configure GROQ_API_KEY or GEMINI_API_KEY for live predictions"
-            }
-        ]
-
-    def _generate_causal_chain(self) -> List[Dict]:
-        return [
-            {
-                "prediction_id": "CAU001-DEMO",
-                "causal_chain": "Sample causal chain (demo mode)",
-                "prediction": "This is illustrative sample content, not a live prediction",
-                "confidence": 0.6,
-                "reasoning": "Demo mode - no AI provider configured or the live call failed.",
-                "supporting_data": ["Configure GROQ_API_KEY or GEMINI_API_KEY for live analysis"],
-                "predicted_outcome": "N/A - demo content",
-                "action": "Configure an AI key for live causal predictions"
-            }
-        ]
-
-    def _generate_contrarian(self) -> List[Dict]:
-        return [
-            {
-                "prediction_id": "CON001-DEMO",
-                "contrarian_view": "Sample contrarian view (demo mode)",
-                "prediction": "This is illustrative sample content, not a live prediction",
-                "confidence": 0.55,
-                "reasoning": "Demo mode - no AI provider configured or the live call failed.",
-                "supporting_data": ["Configure GROQ_API_KEY or GEMINI_API_KEY for live analysis"],
-                "predicted_outcome": "N/A - demo content",
-                "action": "Configure an AI key for live contrarian analysis"
-            }
-        ]
-
-    def _generate_tail_risk(self) -> List[Dict]:
-        return [
-            {
-                "risk_id": "TAIL001",
-                "risk_type": "Geopolitical",
-                "scenario": "Major geopolitical shock disrupts semiconductor supply chain",
-                "probability": 0.08,
-                "impact_if_occurs": "Markets could sell off sharply; semiconductor supply chain at risk",
-                "early_warning_indicators": [
-                    "Military activity near Taiwan Strait (public OSINT sources)",
-                    "Sudden changes in Taiwan semiconductor export volumes",
-                    "US carrier deployments to Indo-Pacific"
-                ],
-                "hedge": "Long volatility instruments, diversify away from single-region chip exposure"
-            },
-            {
-                "risk_id": "TAIL002",
-                "risk_type": "Systemic Financial",
-                "scenario": "Regional bank stress event triggers broader credit contagion",
-                "probability": 0.12,
-                "impact_if_occurs": "Credit crunch risk, potential recession, forced Fed response",
-                "early_warning_indicators": [
-                    "Regional bank ETF (KRE) breaking key support levels",
-                    "High-yield credit spreads widening sharply",
-                    "Reverse repo facility usage dropping fast (liquidity stress)"
-                ],
-                "hedge": "Long duration treasuries, defensive sector tilt, elevated cash reserves"
-            }
-        ]
 
     def _get_accuracy_stats(self) -> Dict:
         return {
@@ -290,41 +196,6 @@ class AeonPredictionEngine:
                 "No resolved prediction track record yet - live grounded predictions were only just wired up. "
                 "This section will populate as predictions are made and later resolved against real outcomes."
             ],
-        }
-
-    def _static_daily_brief(self) -> Dict[str, Any]:
-        return {
-            "market_regime": "Demo mode - not a live assessment",
-            "primary_catalyst": "No AI provider configured, or the live brief call failed",
-            "mega_cap_plays": [],
-            "large_cap_plays": [],
-            "mid_cap_opportunities": [],
-            "event_driven_plays": [],
-            "sector_plays": [],
-            "top_recommendations": [],
-            "market_context": {
-                "key_events_today": [],
-                "macro_regime": "N/A - demo mode",
-                "sector_rotation": "N/A - demo mode",
-                "volatility_setup": "N/A - demo mode",
-                "sentiment": "N/A - demo mode",
-            },
-            "smart_money_activity": {
-                "insider_trades_summary": "See the Insider Trading tab for real SEC Form 4 data.",
-                "congressional_trades": "N/A - demo mode",
-                "institutional_flow": "N/A - demo mode",
-                "cluster_buying_alerts": "N/A - demo mode",
-            },
-            "action_plan": {"immediate": [], "this_week": [], "this_month": []},
-            "risk_management": {
-                "market_risks": "N/A - demo mode",
-                "position_sizing": "N/A - demo mode",
-                "hedging": "N/A - demo mode",
-                "watch_levels": "N/A - demo mode",
-            },
-            "data_edge": ("No AI provider is configured (or the live call failed), so this brief is placeholder "
-                          "content. Set GROQ_API_KEY or GEMINI_API_KEY in backend/.env for a live, data-grounded "
-                          "brief generated from real news, real insider trades, and real sentiment."),
         }
 
 
