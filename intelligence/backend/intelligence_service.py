@@ -26,6 +26,9 @@ import history_db
 import telegram_feed
 import backtest_engine
 import calendar_sync
+import alpha_engine
+import ai_engine
+import alpha_data
 from prediction_engine import generate_ai_predictions, generate_daily_brief
 
 app = FastAPI(title="Aeon Nimbus Intelligence API", version="1.0.0")
@@ -424,12 +427,25 @@ def generate_signals():
     sid = 0
     now_iso = datetime.now().isoformat()
 
+    # Alpha-engine trades first: each has an entry, stop, target and a backtested track record.
+    seen_tickers = set()
+    for a in alpha_engine.get_state().get("signals") or []:
+        sid += 1
+        out.append({
+            "id": sid, "ticker": a["ticker"], "signal_type": a["strategy"], "phase": "ACCUMULATION",
+            "entry_price": a["entry_price"], "target_price": a["target"], "stop_loss": a["stop"],
+            "confidence": a["confidence"] if a["confidence"] is not None else 50.0,
+            "reasoning": f"{a['strategy_name']}: {a['reason']}. Exit by {a['exit_date']}.",
+            "trigger": a["strategy"], "generated_at": now_iso, "exit_date": a["exit_date"],
+            "backtest_edge": a["backtest_edge"], "alpha": True,
+        })
+        seen_tickers.add(a["ticker"])
+
     buys = [t for t in INSIDER_TRADES if t["transaction_type"] == "BUY"]
     by_ticker: Dict[str, List[Dict[str, Any]]] = {}
     for t in buys:
         by_ticker.setdefault(t["ticker"], []).append(t)
 
-    seen_tickers = set()
     for ticker, trades in by_ticker.items():
         distinct_insiders = sorted({t["insider_name"] for t in trades})
         if len(distinct_insiders) >= 2:
@@ -506,7 +522,7 @@ def generate_signals():
                 "trigger": "crypto_momentum", "generated_at": now_iso,
             })
 
-    return sorted(out, key=lambda s: s["confidence"], reverse=True)[:25]
+    return sorted(out, key=lambda s: (not s.get("alpha"), -(s["confidence"] or 0)))[:30]
 
 
 def generate_crypto():
@@ -675,6 +691,15 @@ def _build_ai_context() -> Dict[str, Any]:
         "crypto": CRYPTO,
     }
     try:
+        st = alpha_engine.get_state()
+        context["alpha"] = {
+            "signals": st.get("signals") or [],
+            "strategies": {k: {kk: vv for kk, vv in v.items() if kk != "events"}
+                           for k, v in (st.get("backtests") or {}).items()},
+        }
+    except Exception as e:
+        print(f"[ai_context] alpha failed, omitting: {e}")
+    try:
         context["upcoming_events"] = _upcoming_events_for_context()
     except Exception as e:
         print(f"[ai_context] upcoming_events failed, omitting: {e}")
@@ -716,7 +741,7 @@ def _build_pending_resolutions(predictions: Dict[str, Any]) -> List[Dict[str, An
     without a ticker, a clear bullish/bearish direction (via real_data's own keyword
     classifier), or a real fetchable current price. Never scores demo/illustrative
     predictions as if they were real calls."""
-    if (predictions.get("meta") or {}).get("mode") != "live":
+    if (predictions.get("meta") or {}).get("mode") not in ("live", "rules"):
         return []
 
     now = datetime.now()
@@ -727,7 +752,7 @@ def _build_pending_resolutions(predictions: Dict[str, Any]) -> List[Dict[str, An
             if not ticker:
                 continue
             text = " ".join(str(item.get(k, "")) for k in ("action", "prediction", "reasoning"))
-            direction = real_data._classify_sentiment(text)
+            direction = item.get("direction") or real_data._classify_sentiment(text)
             if direction == "neutral":
                 continue
             entry_price = real_data.get_current_price(ticker)
@@ -881,6 +906,22 @@ def _start_intel_data():
         backtest_engine.start_background()
     except Exception as e:
         print(f"[backtest_engine] failed to start: {e}")
+    def _rebuild_rules_outputs():
+        # LLM runs stay on their own (rate-limited) schedule; rule-based outputs are cheap,
+        # so rebuild them as soon as the alpha engine has new signals.
+        global AI_PREDICTIONS, DAILY_BRIEF
+        if ai_engine.available():
+            return
+        context = _build_ai_context()
+        AI_PREDICTIONS = _persist_and_annotate_predictions(generate_ai_predictions(context))
+        DAILY_BRIEF = generate_daily_brief(context)
+        history_db.save_daily_brief(DAILY_BRIEF)
+
+    alpha_engine.on_refresh.append(_rebuild_rules_outputs)
+    try:
+        alpha_engine.start_background()
+    except Exception as e:
+        print(f"[alpha_engine] failed to start: {e}")
 
 # ─── Request/Response Models ─────────────────────────────────
 
@@ -1201,7 +1242,7 @@ def get_intel_dashboard():
     /api/volatility - all real, none of them the old fabricated populated_api.py generators."""
     return {
         "news": _all_news()[:20],
-        "signals": SIGNALS,
+        "signals": generate_signals(),  # cheap and in-memory; always reflects the latest alpha run
         "crypto": CRYPTO,
         "sentiment": SENTIMENT,
         "insider_trades": INSIDER_TRADES,
@@ -1244,16 +1285,29 @@ def get_ai_predictions_endpoint():
         stats["live_prediction_by_category"] = calibration["by_category"]
     stats["last_30_days"] = last_30
 
+    by_cat: Dict[str, Any] = {}
+    # alpha-engine strategies: every rule-based prediction is one of these signals, so their
+    # one-year backtests (excess return vs the S&P 500) are the direct evidence behind them
+    for key, bt in (alpha_engine.get_state().get("backtests") or {}).items():
+        if bt.get("n"):
+            by_cat[bt.get("name", key)] = {"accuracy": (bt.get("win_rate") or 0) / 100, "n": bt["n"],
+                                          "avg_excess_pct": bt.get("avg_excess_pct"), "t_stat": bt.get("t_stat"),
+                                          "edge": bool(bt.get("edge")), "basis": "beat_spy"}
     if backtest.get("signals"):
-        stats["by_category"] = _backtest_by_category(backtest)
-        stats["model_improvements"] = [
-            "No resolved live-prediction track record yet (the live grounded predictions above were only just "
-            "wired up). The category breakdown here is the real historical backtest of the underlying insider-buy "
-            "signal - see historical_backtest below for full methodology, sample events, and caveats."
-        ] if not calibration["predictions_resolved"] else [
+        by_cat.update(_backtest_by_category(backtest))
+    if by_cat:
+        stats["by_category"] = by_cat
+        stats["model_improvements"] = ([
             f"{calibration['predictions_resolved']} live prediction(s) resolved against real prices in the last "
-            "30 days - see last_30_days above for real accuracy/calibration. by_category below remains the real "
-            "historical backtest of the underlying insider-buy signal, a separate real measurement."
+            "30 days - see the live column for real accuracy and calibration."
+        ] if calibration["predictions_resolved"] else [
+            "No live prediction has reached its horizon yet, so there is no graded live record. Every open "
+            "prediction is graded automatically against the real price on its target date."
+        ]) + [
+            "By-category figures are real historical backtests of the signals behind the predictions: alpha "
+            "strategies are scored as % of events that beat the S&P 500 over the same window; the Form 4 "
+            "insider-buy study below is scored as % of events with a positive return.",
+            "The Alpha tab carries each strategy's full evidence and a forward paper-trading record.",
         ]
     result["prediction_accuracy_stats"] = stats
     result["historical_backtest"] = backtest
@@ -1343,6 +1397,41 @@ def get_volatility_endpoint():
         "volatility_catalysts": catalysts,
         "last_update": datetime.now().isoformat(),
     }
+
+@app.get("/api/alpha")
+def get_alpha():
+    """Live alpha signals, each strategy's backtest vs the S&P 500, and the forward
+    paper-trading record built from every signal the engine has issued."""
+    state = alpha_engine.get_state()
+    try:
+        book = alpha_engine.portfolio(alpha_data.price_history)
+    except Exception as e:
+        book = {"open": [], "closed": [], "stats": {}, "equity": [], "error": str(e)[:200]}
+    strategies = {}
+    for key, meta in alpha_engine.STRATEGIES.items():
+        bt = (state.get("backtests") or {}).get(key) or {}
+        strategies[key] = {**meta, **{k: v for k, v in bt.items() if k != "events"}, "sample_events": (bt.get("events") or [])[:12]}
+    return {
+        "status": state.get("status"),
+        "generated_at": state.get("generated_at"),
+        "backtested_at": state.get("backtested_at"),
+        "errors": state.get("errors"),
+        "signals": state.get("signals") or [],
+        "strategies": strategies,
+        "portfolio": book,
+        "disclaimer": ("Rule-based research signals with their historical evidence, not investment advice. "
+                       "Backtests use one year of events with overlapping windows and no trading costs."),
+    }
+
+
+@app.get("/api/alpha/strategy/{key}")
+def get_alpha_strategy(key: str):
+    state = alpha_engine.get_state()
+    bt = (state.get("backtests") or {}).get(key)
+    if key not in alpha_engine.STRATEGIES:
+        raise HTTPException(404, "unknown strategy")
+    return {"key": key, **alpha_engine.STRATEGIES[key], **(bt or {"events": []})}
+
 
 _SYMBOL_RE = re.compile(r"^[A-Z0-9.\-^=]{1,12}$")
 
@@ -1442,7 +1531,7 @@ def get_ticker_lens(symbol: str):
             "buy_value": sum(t["total_value"] or 0 for t in buys),
             "sell_value": sum(t["total_value"] or 0 for t in sells),
         },
-        "signals": [s for s in SIGNALS if (s.get("ticker") or "").upper() == tk],
+        "signals": [s for s in generate_signals() if (s.get("ticker") or "").upper() == tk],
         "predictions": predictions,
         "ai_mode": (AI_PREDICTIONS.get("meta") or {}).get("mode"),
         "last_update": datetime.now().isoformat(),

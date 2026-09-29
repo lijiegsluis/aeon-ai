@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import './Intelligence.css';
 import TickerLens from './TickerLens';
+import AlphaView from './AlphaView';
 import { formatEventDate, timeAgo } from './format';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8003';
@@ -198,7 +199,7 @@ interface DailyBrief {
         institutional_flow: string;
         cluster_buying_alerts: string;
     };
-    mode?: 'live' | 'demo';
+    mode?: 'live' | 'rules' | 'demo';
     data_edge?: string;
     demo_note?: string;
 }
@@ -249,6 +250,8 @@ interface AIPredictions {
         confidence_calibration: string;
         total_data_sources: number;
         training_data: string;
+        mode?: 'live' | 'rules' | 'demo';
+        note?: string | null;
     };
     high_confidence_predictions: AIPrediction[];
     pattern_based_predictions: AIPrediction[];
@@ -378,6 +381,7 @@ interface InsiderTrades90Response {
 
 type ViewType =
     | 'ticker'
+    | 'alpha'
     | 'overview'
     | 'live'
     | 'signals'
@@ -461,7 +465,8 @@ function Intelligence() {
                 setSignals(data.signals || []);
                 setSentiment(data.sentiment || []);
                 setInsiderTrades(data.insider_trades || []);
-                setDailyBrief(data.daily_brief || null);
+                // the backend serves {} until the first brief is built
+                setDailyBrief(data.daily_brief?.market_context ? data.daily_brief : null);
                 setConnected(true);
                 setLastUpdate(new Date().toLocaleTimeString());
             } else {
@@ -478,7 +483,7 @@ function Intelligence() {
 
             if (aiPredictionsRes.ok) {
                 const aiData = await aiPredictionsRes.json();
-                setAiPredictions(aiData);
+                setAiPredictions(aiData?.meta ? aiData : null);
             }
 
             if (telegramRes.ok) {
@@ -570,6 +575,10 @@ function Intelligence() {
                         <span className="nav-glyph">◆</span>
                         <span>OVERVIEW</span>
                     </button>
+                    <button className={view === 'alpha' ? 'active' : ''} onClick={() => setView('alpha')}>
+                        <span className="nav-glyph">α</span>
+                        <span>ALPHA</span>
+                    </button>
                     <button className={view === 'ticker' ? 'active' : ''} onClick={() => setView('ticker')}>
                         <span className="nav-glyph">⌖</span>
                         <span>TICKER LENS{lensTicker ? ` · ${lensTicker}` : ''}</span>
@@ -629,6 +638,7 @@ function Intelligence() {
 
             <main className="terminal-main">
                 {view === 'ticker' && <TickerLens apiBase={API_BASE} ticker={lensTicker} onTicker={openLens} />}
+                {view === 'alpha' && <AlphaView apiBase={API_BASE} onTicker={openLens} />}
                 {view === 'overview' && (
                     <div className="terminal-view">
                         <div className="view-header">
@@ -1273,11 +1283,28 @@ function Intelligence() {
                     </div>
                 )}
 
+                {((view === 'brief' && !dailyBrief) || (view === 'ai-predictions' && !aiPredictions)) && (
+                    <div className="terminal-view">
+                        <div className="view-header">
+                            <h1>{view === 'brief' ? 'DAILY INTELLIGENCE BRIEF' : 'AI PREDICTION ENGINE'}</h1>
+                            <p>
+                                {connected
+                                    ? 'Being built from the first alpha-engine pass — this takes a minute or two after the backend starts.'
+                                    : 'Waiting for the Intelligence backend…'}
+                            </p>
+                        </div>
+                    </div>
+                )}
+
                 {view === 'brief' && dailyBrief && (
                     <div className="terminal-view">
                         <div className="view-header">
                             <h1>DAILY INTELLIGENCE BRIEF</h1>
-                            <p>AI-powered stock recommendations synthesizing all 40+ data sources with full market context</p>
+                            <p>
+                                {dailyBrief.mode === 'rules'
+                                    ? 'Trade ideas assembled from the alpha engine’s live signals, their backtests and the dated event calendar'
+                                    : 'LLM-written trade ideas grounded in live signals, backtests, events, sentiment and insider data'}
+                            </p>
                             <div className="brief-meta">
                                 <span>
                                     <strong>Date:</strong> {dailyBrief.date}
@@ -1295,14 +1322,14 @@ function Intelligence() {
                             <div
                                 className="data-block"
                                 style={{
-                                    borderLeft: `4px solid ${dailyBrief.mode === 'live' ? '#00ff88' : '#ffa500'}`,
+                                    borderLeft: `4px solid ${dailyBrief.mode === 'demo' ? '#ffa500' : '#00ff88'}`,
                                     padding: '12px 16px',
                                 }}
                             >
-                                <span style={{ color: dailyBrief.mode === 'live' ? '#00ff88' : '#ffa500', fontWeight: 700 }}>
-                                    {dailyBrief.mode === 'live' ? 'LIVE' : 'DEMO'}:
+                                <span style={{ color: dailyBrief.mode === 'demo' ? '#ffa500' : '#00ff88', fontWeight: 700 }}>
+                                    {dailyBrief.mode === 'live' ? 'LIVE' : dailyBrief.mode === 'rules' ? 'RULES' : 'DEMO'}:
                                 </span>{' '}
-                                {dailyBrief.mode === 'live' ? dailyBrief.data_edge : dailyBrief.demo_note}
+                                {dailyBrief.mode === 'demo' ? dailyBrief.demo_note : dailyBrief.data_edge}
                             </div>
                         )}
 
@@ -1664,7 +1691,11 @@ function Intelligence() {
                     <div className="terminal-view">
                         <div className="view-header">
                             <h1>🧠 AI PREDICTION ENGINE</h1>
-                            <p>Advanced market prediction system using ensemble methods, pattern recognition, and causal reasoning</p>
+                            <p>
+                                {aiPredictions.meta.mode === 'rules'
+                                    ? 'Every prediction is a live alpha-engine signal with a stated horizon, graded against the real price when it resolves'
+                                    : 'LLM predictions grounded in live signals and data, graded against real prices when they resolve'}
+                            </p>
                             <div className="brief-meta">
                                 <span>
                                     <strong>Model:</strong> {aiPredictions.meta.model_version}
@@ -1679,13 +1710,17 @@ function Intelligence() {
                                     <strong>Calibration:</strong> {aiPredictions.meta.confidence_calibration}
                                 </span>
                             </div>
+                            {aiPredictions.meta.note && <p className="text-muted lens-note">{aiPredictions.meta.note}</p>}
                         </div>
 
                         {aiPredictions.prediction_accuracy_stats && (
                             <section className="data-block accent-panel-success">
                                 <div className="block-header">
                                     <h2>📊 MODEL ACCURACY STATS</h2>
-                                    <p>Live-prediction track record, backed by a real historical backtest of the underlying signal</p>
+                                    <p>
+                                        Live-prediction track record, backed by real historical backtests of the signals behind each
+                                        prediction
+                                    </p>
                                 </div>
                                 <div className="context-grid">
                                     <div className="context-item">
@@ -1720,7 +1755,12 @@ function Intelligence() {
                                             Object.entries(aiPredictions.prediction_accuracy_stats.by_category).map(
                                                 ([cat, stats]: [string, any]) => (
                                                     <p key={cat}>
-                                                        <strong>{cat}:</strong> {(stats.accuracy * 100).toFixed(1)}% positive (n={stats.n})
+                                                        <strong>{cat}:</strong>{' '}
+                                                        {stats.basis === 'beat_spy'
+                                                            ? `${(stats.accuracy * 100).toFixed(1)}% beat the S&P 500, avg excess ${
+                                                                  stats.avg_excess_pct >= 0 ? '+' : ''
+                                                              }${stats.avg_excess_pct}% (n=${stats.n}${stats.edge ? ', significant' : ''})`
+                                                            : `${(stats.accuracy * 100).toFixed(1)}% positive (n=${stats.n})`}
                                                     </p>
                                                 ),
                                             )
@@ -2075,7 +2115,9 @@ function Intelligence() {
                                         <h3>{risk.risk_type} Risk</h3>
                                         <div className="rec-targets">
                                             <span className="text-danger stat-big">
-                                                Probability: {((risk.probability ?? 0) * 100).toFixed(1)}%
+                                                {risk.probability != null
+                                                    ? `Probability: ${(risk.probability * 100).toFixed(1)}%`
+                                                    : 'Monitor (no probability estimated)'}
                                             </span>
                                         </div>
                                     </div>
