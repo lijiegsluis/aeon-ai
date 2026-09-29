@@ -393,10 +393,32 @@ type ViewType =
     | 'sources'
     | 'volatility';
 
+type BootState = 'pending' | 'ok' | 'error';
+
+interface BootFeature {
+    key: string;
+    label: string;
+}
+
+const BOOT_FEATURES: BootFeature[] = [
+    { key: 'dashboard', label: 'Market Dashboard' },
+    { key: 'smartMoney', label: 'Smart Money Flow' },
+    { key: 'aiPredictions', label: 'AI Predictions' },
+    { key: 'telegram', label: 'Telegram Feed' },
+    { key: 'calendar', label: 'Event Calendar' },
+    { key: 'sources', label: 'Data Sources' },
+    { key: 'volatility', label: 'Volatility & Sentiment' },
+    { key: 'insiderTrades', label: 'Insider Trading (90d)' },
+];
+
 function Intelligence() {
     // Aeon Analysis links here as ?ticker=XYZ — open that name's lens directly.
     const initialTicker = (new URLSearchParams(window.location.search).get('ticker') || '').trim().toUpperCase();
     const [view, setView] = useState<ViewType>(initialTicker ? 'ticker' : 'overview');
+    const [booted, setBooted] = useState(false);
+    const [bootStatus, setBootStatus] = useState<Record<string, BootState>>(
+        Object.fromEntries(BOOT_FEATURES.map((f) => [f.key, 'pending']))
+    );
     const [lensTicker, setLensTicker] = useState<string>(initialTicker);
     const openLens = (t: string) => {
         const tk = t.trim().toUpperCase();
@@ -445,73 +467,138 @@ function Intelligence() {
         };
     }, []);
 
+    const markBoot = (key: string, ok: boolean) => {
+        setBootStatus((prev) => (prev[key] === (ok ? 'ok' : 'error') ? prev : { ...prev, [key]: ok ? 'ok' : 'error' }));
+    };
+
     const fetchAllData = async () => {
-        try {
-            const [dashboardRes, smartMoneyRes, aiPredictionsRes, telegramRes, calendarRes, sourcesRes, volatilityRes, insider90Res] =
-                await Promise.all([
-                    fetch(`${API_BASE}/api/dashboard`),
-                    fetch(`${API_BASE}/api/smart-money/notifications`),
-                    fetch(`${API_BASE}/api/ai-predictions`),
-                    fetch(`${API_BASE}/api/telegram/breaking-news?limit=300`),
-                    fetch(`${API_BASE}/api/events/live?timeframe=90days`),
-                    fetch(`${API_BASE}/api/sources/status`),
-                    fetch(`${API_BASE}/api/volatility`),
-                    fetch(`${API_BASE}/api/insider-trades?days=90`),
-                ]);
+        const loads = [
+            (async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/api/dashboard`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        setNews(data.news || []);
+                        setSignals(data.signals || []);
+                        setSentiment(data.sentiment || []);
+                        setInsiderTrades(data.insider_trades || []);
+                        // the backend serves {} until the first brief is built
+                        setDailyBrief(data.daily_brief?.market_context ? data.daily_brief : null);
+                        setConnected(true);
+                        setLastUpdate(new Date().toLocaleTimeString());
+                        markBoot('dashboard', true);
+                    } else {
+                        setConnected(false);
+                        markBoot('dashboard', false);
+                    }
+                } catch {
+                    setConnected(false);
+                    markBoot('dashboard', false);
+                }
+            })(),
+            (async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/api/smart-money/notifications`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        setSmartMoneyNotifications({
+                            past: data.notifications?.past_filings || [],
+                            future: data.notifications?.future_expected || [],
+                        });
+                        markBoot('smartMoney', true);
+                    } else {
+                        markBoot('smartMoney', false);
+                    }
+                } catch {
+                    markBoot('smartMoney', false);
+                }
+            })(),
+            (async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/api/ai-predictions`);
+                    if (res.ok) {
+                        const aiData = await res.json();
+                        setAiPredictions(aiData?.meta ? aiData : null);
+                        markBoot('aiPredictions', true);
+                    } else {
+                        markBoot('aiPredictions', false);
+                    }
+                } catch {
+                    markBoot('aiPredictions', false);
+                }
+            })(),
+            (async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/api/telegram/breaking-news?limit=300`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        setTelegramMessages(data.messages || []);
+                        setTelegramStatus(data.status || null);
+                        markBoot('telegram', true);
+                    } else {
+                        markBoot('telegram', false);
+                    }
+                } catch {
+                    markBoot('telegram', false);
+                }
+            })(),
+            (async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/api/events/live?timeframe=90days`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        setCalendarEvents(data.events || []);
+                        markBoot('calendar', true);
+                    } else {
+                        markBoot('calendar', false);
+                    }
+                } catch {
+                    markBoot('calendar', false);
+                }
+            })(),
+            (async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/api/sources/status`);
+                    if (res.ok) {
+                        setSourcesStatus(await res.json());
+                        markBoot('sources', true);
+                    } else {
+                        markBoot('sources', false);
+                    }
+                } catch {
+                    markBoot('sources', false);
+                }
+            })(),
+            (async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/api/volatility`);
+                    if (res.ok) {
+                        setVolatility(await res.json());
+                        markBoot('volatility', true);
+                    } else {
+                        markBoot('volatility', false);
+                    }
+                } catch {
+                    markBoot('volatility', false);
+                }
+            })(),
+            (async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/api/insider-trades?days=90`);
+                    if (res.ok) {
+                        setInsiderTrades90(await res.json());
+                        markBoot('insiderTrades', true);
+                    } else {
+                        markBoot('insiderTrades', false);
+                    }
+                } catch {
+                    markBoot('insiderTrades', false);
+                }
+            })(),
+        ];
 
-            if (dashboardRes.ok) {
-                const data = await dashboardRes.json();
-                setNews(data.news || []);
-                setSignals(data.signals || []);
-                setSentiment(data.sentiment || []);
-                setInsiderTrades(data.insider_trades || []);
-                // the backend serves {} until the first brief is built
-                setDailyBrief(data.daily_brief?.market_context ? data.daily_brief : null);
-                setConnected(true);
-                setLastUpdate(new Date().toLocaleTimeString());
-            } else {
-                setConnected(false);
-            }
-
-            if (smartMoneyRes.ok) {
-                const smartMoneyData = await smartMoneyRes.json();
-                setSmartMoneyNotifications({
-                    past: smartMoneyData.notifications?.past_filings || [],
-                    future: smartMoneyData.notifications?.future_expected || [],
-                });
-            }
-
-            if (aiPredictionsRes.ok) {
-                const aiData = await aiPredictionsRes.json();
-                setAiPredictions(aiData?.meta ? aiData : null);
-            }
-
-            if (telegramRes.ok) {
-                const telegramData = await telegramRes.json();
-                setTelegramMessages(telegramData.messages || []);
-                setTelegramStatus(telegramData.status || null);
-            }
-
-            if (calendarRes.ok) {
-                const calendarData = await calendarRes.json();
-                setCalendarEvents(calendarData.events || []);
-            }
-
-            if (sourcesRes.ok) {
-                setSourcesStatus(await sourcesRes.json());
-            }
-
-            if (volatilityRes.ok) {
-                setVolatility(await volatilityRes.json());
-            }
-
-            if (insider90Res.ok) {
-                setInsiderTrades90(await insider90Res.json());
-            }
-        } catch (error) {
-            console.error('Failed to fetch data:', error);
-            setConnected(false);
-        }
+        await Promise.allSettled(loads);
+        setBooted(true);
     };
 
     const getPhaseColor = (phase: string): string => {
@@ -550,6 +637,44 @@ function Intelligence() {
     };
 
     const recentNews = news.slice(0, 30);
+
+    if (!booted) {
+        const doneCount = BOOT_FEATURES.filter((f) => bootStatus[f.key] !== 'pending').length;
+        const errorCount = BOOT_FEATURES.filter((f) => bootStatus[f.key] === 'error').length;
+        const pct = Math.round((doneCount / BOOT_FEATURES.length) * 100);
+
+        return (
+            <div className="boot-screen">
+                <div className="boot-panel">
+                    <div className="boot-brand">
+                        <div className="brand-logo">AEON</div>
+                        <div className="brand-sub">INTELLIGENCE</div>
+                    </div>
+                    <div className="boot-bar-track">
+                        <div className="boot-bar-fill" style={{ width: `${pct}%` }} />
+                    </div>
+                    <div className="boot-pct">
+                        {pct}% &middot; {doneCount}/{BOOT_FEATURES.length} systems online
+                    </div>
+                    <ul className="boot-list">
+                        {BOOT_FEATURES.map((f) => (
+                            <li key={f.key} className={`boot-item boot-${bootStatus[f.key]}`}>
+                                <span className="boot-icon">
+                                    {bootStatus[f.key] === 'ok' ? '✓' : bootStatus[f.key] === 'error' ? '✗' : '◌'}
+                                </span>
+                                <span>{f.label}</span>
+                            </li>
+                        ))}
+                    </ul>
+                    {doneCount === BOOT_FEATURES.length && errorCount > 0 && (
+                        <div className="boot-warning">
+                            {errorCount} feature{errorCount > 1 ? 's' : ''} degraded — check DATA SOURCES after load.
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="intelligence-terminal">
