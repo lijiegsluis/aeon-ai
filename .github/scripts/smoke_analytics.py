@@ -17,6 +17,7 @@ for name, fn in (("yfinance", md._yf_history), ("yahoo-chart", md._chart_history
 check("history (with fallbacks)", lambda: f"{len(md.history('MSFT', '6mo'))} rows via {md.LAST_SOURCE.get('history')}")
 check("info", lambda: {k: md.info("NVDA").get(k) for k in ("currentPrice", "regularMarketPrice", "trailingPE", "_source")})
 check("chart-only quote", lambda: md._info_from_chart("SPY"))
+print("fallback errors:", md.LAST_ERROR)
 
 from fastapi.testclient import TestClient  # noqa: E402
 import main  # noqa: E402

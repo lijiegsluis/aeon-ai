@@ -24,6 +24,11 @@ import pandas as pd
 import requests
 import yfinance as yf
 
+try:  # browser TLS fingerprint — the same thing that gets yfinance past Yahoo's bot checks
+    from curl_cffi import requests as browser_requests
+except ImportError:  # pragma: no cover
+    browser_requests = None
+
 UA = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
                     "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"}
 PERIOD_DAYS = {"5d": 5, "1mo": 31, "3mo": 92, "6mo": 183, "1y": 366, "2y": 731, "5y": 1827, "max": 36500}
@@ -32,6 +37,14 @@ _CACHE: dict[str, tuple[float, object]] = {}
 _LOCK = threading.Lock()
 # Which upstream actually answered most recently, per kind — surfaced by /health.
 LAST_SOURCE: dict[str, str] = {}
+# Why the most recent attempt at each fallback came back empty (diagnostics).
+LAST_ERROR: dict[str, str] = {}
+
+
+def _get(url: str, **kw):
+    if browser_requests is not None:
+        return browser_requests.get(url, impersonate="chrome", **kw)
+    return requests.get(url, headers=UA, **kw)
 
 
 def cached(key: str, ttl: float, fn: Callable[[], object]):
@@ -61,16 +74,17 @@ def _yf_history(tk: str, period: str, interval: str) -> pd.DataFrame:
 def _chart(tk: str, period: str, interval: str) -> dict | None:
     for host in ("query2", "query1"):
         try:
-            r = requests.get(f"https://{host}.finance.yahoo.com/v8/finance/chart/{tk}",
-                             params={"range": period, "interval": interval, "includePrePost": "false"},
-                             headers=UA, timeout=12)
+            r = _get(f"https://{host}.finance.yahoo.com/v8/finance/chart/{tk}",
+                     params={"range": period, "interval": interval, "includePrePost": "false"}, timeout=12)
             if r.status_code != 200:
+                LAST_ERROR["yahoo-chart"] = f"{host}: HTTP {r.status_code}"
                 continue
             res = (r.json().get("chart") or {}).get("result") or []
             if res:
                 return res[0]
-        except (requests.RequestException, ValueError):
-            continue
+            LAST_ERROR["yahoo-chart"] = f"{host}: empty result"
+        except Exception as e:  # noqa: BLE001 — requests and curl_cffi raise different types
+            LAST_ERROR["yahoo-chart"] = f"{host}: {type(e).__name__}"
     return None
 
 
@@ -90,11 +104,13 @@ def _stooq_history(tk: str, period: str, interval: str) -> pd.DataFrame:
         return pd.DataFrame()
     sym = tk.lower().replace(".", "-")
     try:
-        r = requests.get("https://stooq.com/q/d/l/", params={"s": f"{sym}.us", "i": "d"}, headers=UA, timeout=12)
+        r = _get("https://stooq.com/q/d/l/", params={"s": f"{sym}.us", "i": "d"}, timeout=12)
         if r.status_code != 200 or not r.text.startswith("Date"):
+            LAST_ERROR["stooq"] = f"HTTP {r.status_code}: {r.text[:60]!r}"
             return pd.DataFrame()
         df = pd.read_csv(io.StringIO(r.text), parse_dates=["Date"]).set_index("Date")
-    except (requests.RequestException, ValueError, KeyError):
+    except Exception as e:  # noqa: BLE001
+        LAST_ERROR["stooq"] = type(e).__name__
         return pd.DataFrame()
     df.index = df.index.tz_localize("UTC")
     cutoff = pd.Timestamp.now(tz="UTC") - pd.Timedelta(days=PERIOD_DAYS.get(period, 366))
