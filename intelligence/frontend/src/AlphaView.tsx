@@ -21,6 +21,7 @@ type Signal = {
     risk_reward: number | null;
     confidence: number | null;
     backtest_edge: boolean;
+    tier?: 'trade' | 'watch';
     reason: string;
 };
 type BtEvent = {
@@ -42,6 +43,8 @@ type Strategy = {
     avg_excess_pct?: number;
     median_excess_pct?: number;
     t_stat?: number;
+    first_half_excess_pct?: number | null;
+    second_half_excess_pct?: number | null;
     verdict?: string;
     edge?: boolean;
     period?: { start: string; end: string };
@@ -218,8 +221,9 @@ export default function AlphaView({ apiBase, onTicker }: { apiBase: string; onTi
                         <div className="block-header">
                             <h2>LIVE SIGNALS</h2>
                             <p>
-                                Proven-edge strategies first. Confidence is the strategy&apos;s historical win rate against the S&amp;P 500
-                                — shown only once it has at least 20 past events. Stops sit 2× the 14-day average true range below entry.
+                                Proven-edge trades first. Confidence is the strategy&apos;s historical win rate against the S&amp;P 500 and
+                                is only quoted when that edge is statistically significant; the rest are a capped watchlist, still
+                                paper-traded so they build a forward record. Stops sit 2× the 14-day average true range below entry.
                             </p>
                         </div>
                         <table className="data-grid">
@@ -256,16 +260,18 @@ export default function AlphaView({ apiBase, onTicker }: { apiBase: string; onTi
                                         </td>
                                         <td className="cell-type">
                                             {s.strategy_name}
-                                            {s.backtest_edge && <div className="edge-badge">✓ proven edge</div>}
+                                            {s.backtest_edge ? (
+                                                <div className="edge-badge">✓ proven edge</div>
+                                            ) : (
+                                                <div className="watch-badge">watchlist · edge not proven</div>
+                                            )}
                                         </td>
                                         <td className="cell-impact">${s.entry_price.toFixed(2)}</td>
                                         <td className="cell-impact text-danger">${s.stop.toFixed(2)}</td>
                                         <td className="cell-impact text-success">${s.target.toFixed(2)}</td>
                                         <td className="cell-countdown">{s.risk_reward ?? '—'}</td>
                                         <td className="cell-date">{formatEventDate(s.exit_date)}</td>
-                                        <td className="cell-countdown">
-                                            {s.confidence != null ? `${s.confidence.toFixed(0)}%` : 'unproven'}
-                                        </td>
+                                        <td className="cell-countdown">{s.confidence != null ? `${s.confidence.toFixed(0)}%` : '—'}</td>
                                         <td className="cell-rec">{s.reason}</td>
                                     </tr>
                                 ))}
@@ -278,7 +284,8 @@ export default function AlphaView({ apiBase, onTicker }: { apiBase: string; onTi
                             <h2>STRATEGY EVIDENCE</h2>
                             <p>
                                 Each strategy replayed on the last year of real events: return over its holding window minus the S&amp;P
-                                500&apos;s over the same days. An edge needs 20+ events and a t-statistic of at least 2.
+                                500&apos;s over the same days. An edge needs 20+ events, a t-statistic of at least 2, and a positive average
+                                in both the earlier and later half of the sample.
                             </p>
                         </div>
                         <div className="strategy-grid">
@@ -307,6 +314,15 @@ export default function AlphaView({ apiBase, onTicker }: { apiBase: string; onTi
                                             <span className="stat-num">{s.t_stat ?? '—'}</span>
                                         </div>
                                     </div>
+                                    {s.first_half_excess_pct != null && s.second_half_excess_pct != null && (
+                                        <p className="strategy-halves">
+                                            Stability: avg excess{' '}
+                                            <span className={tone(s.first_half_excess_pct)}>{pct(s.first_half_excess_pct)}</span> in the
+                                            earlier half of events,{' '}
+                                            <span className={tone(s.second_half_excess_pct)}>{pct(s.second_half_excess_pct)}</span> in the
+                                            later half
+                                        </p>
+                                    )}
                                     <p className="strategy-rules">{s.rules}</p>
                                     {!!s.sample_events?.length && (
                                         <button className="strategy-toggle" onClick={() => setOpen(open === key ? null : key)}>

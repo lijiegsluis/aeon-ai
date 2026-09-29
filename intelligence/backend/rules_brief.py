@@ -82,8 +82,11 @@ def daily_brief(context: Dict[str, Any], alpha: Dict[str, Any]) -> Dict[str, Any
     top = (proven or plays)[:5]
 
     soon = [e for e in events if e.get("days_until", 99) <= 7]
-    catalyst = (f"{soon[0]['title']} in {soon[0]['days_until']} day(s)" if soon else
-                f"{events[0]['title']} in {events[0]['days_until']} days" if events else
+    def when(d):
+        return "today" if d <= 0 else "tomorrow" if d == 1 else f"in {d} days"
+
+    catalyst = (f"{soon[0]['title']} {when(soon[0]['days_until'])}" if soon else
+                f"{events[0]['title']} {when(events[0]['days_until'])}" if events else
                 "No dated macro or earnings catalyst in the next three weeks")
 
     buys = [t for t in insiders if t.get("transaction_type") == "BUY"]

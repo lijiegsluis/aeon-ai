@@ -1286,7 +1286,11 @@ function Intelligence() {
                     <div className="terminal-view">
                         <div className="view-header">
                             <h1>DAILY INTELLIGENCE BRIEF</h1>
-                            <p>AI-powered stock recommendations synthesizing all 40+ data sources with full market context</p>
+                            <p>
+                                {dailyBrief.mode === 'rules'
+                                    ? 'Trade ideas assembled from the alpha engine’s live signals, their backtests and the dated event calendar'
+                                    : 'LLM-written trade ideas grounded in live signals, backtests, events, sentiment and insider data'}
+                            </p>
                             <div className="brief-meta">
                                 <span>
                                     <strong>Date:</strong> {dailyBrief.date}
@@ -1673,7 +1677,11 @@ function Intelligence() {
                     <div className="terminal-view">
                         <div className="view-header">
                             <h1>🧠 AI PREDICTION ENGINE</h1>
-                            <p>Advanced market prediction system using ensemble methods, pattern recognition, and causal reasoning</p>
+                            <p>
+                                {aiPredictions.meta.mode === 'rules'
+                                    ? 'Every prediction is a live alpha-engine signal with a stated horizon, graded against the real price when it resolves'
+                                    : 'LLM predictions grounded in live signals and data, graded against real prices when they resolve'}
+                            </p>
                             <div className="brief-meta">
                                 <span>
                                     <strong>Model:</strong> {aiPredictions.meta.model_version}
@@ -1695,7 +1703,10 @@ function Intelligence() {
                             <section className="data-block accent-panel-success">
                                 <div className="block-header">
                                     <h2>📊 MODEL ACCURACY STATS</h2>
-                                    <p>Live-prediction track record, backed by a real historical backtest of the underlying signal</p>
+                                    <p>
+                                        Live-prediction track record, backed by real historical backtests of the signals behind each
+                                        prediction
+                                    </p>
                                 </div>
                                 <div className="context-grid">
                                     <div className="context-item">
@@ -1730,7 +1741,12 @@ function Intelligence() {
                                             Object.entries(aiPredictions.prediction_accuracy_stats.by_category).map(
                                                 ([cat, stats]: [string, any]) => (
                                                     <p key={cat}>
-                                                        <strong>{cat}:</strong> {(stats.accuracy * 100).toFixed(1)}% positive (n={stats.n})
+                                                        <strong>{cat}:</strong>{' '}
+                                                        {stats.basis === 'beat_spy'
+                                                            ? `${(stats.accuracy * 100).toFixed(1)}% beat the S&P 500, avg excess ${
+                                                                  stats.avg_excess_pct >= 0 ? '+' : ''
+                                                              }${stats.avg_excess_pct}% (n=${stats.n}${stats.edge ? ', significant' : ''})`
+                                                            : `${(stats.accuracy * 100).toFixed(1)}% positive (n=${stats.n})`}
                                                     </p>
                                                 ),
                                             )

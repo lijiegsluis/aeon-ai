@@ -1433,6 +1433,12 @@ body {
     letter-spacing: 0.6px;
     color: var(--success);
 }
+.watch-badge {
+    margin-top: 4px;
+    font-size: 10px;
+    letter-spacing: 0.4px;
+    color: var(--text-dim);
+}
 .strategy-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
@@ -1456,9 +1462,8 @@ body {
 }
 .strategy-head {
     display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    align-items: baseline;
+    flex-direction: column;
+    gap: 4px;
 }
 .strategy-head h3 {
     font-size: 15px;
@@ -1467,13 +1472,17 @@ body {
 .strategy-verdict {
     font-size: 11px;
     color: var(--text-dim);
-    text-align: right;
 }
 .verdict-edge .strategy-verdict {
     color: var(--success);
 }
 .verdict-none .strategy-verdict {
     color: var(--danger);
+}
+.strategy-halves {
+    margin: 0 0 10px;
+    font-size: 12px;
+    color: var(--text-dim);
 }
 .strategy-thesis {
     margin: 8px 0 14px;

@@ -140,9 +140,8 @@ class AeonPredictionEngine:
                     f"30 days: {stats['accuracy']*100:.0f}% accuracy vs {stats['avg_confidence']*100:.0f}% avg "
                     f"stated confidence (calibration score {stats['calibration_score']:.2f}). See "
                     "prediction_accuracy_stats.last_30_days for the full breakdown.")
-        return ("Not yet calibrated - no resolved live prediction history yet. See historical_backtest below for "
-                "a real backtest of the underlying insider-buy signal (not a backtest of these LLM predictions "
-                "themselves).")
+        return ("Not yet calibrated - no live prediction has reached its horizon yet. The by-category figures "
+                "below are real historical backtests of the signals these predictions are built on.")
 
     def _count_data_sources(self, context: Optional[Dict[str, Any]]) -> int:
         """Honest count of real-data categories actually fed into this prediction, not a fabricated number."""

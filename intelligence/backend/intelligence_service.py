@@ -1285,16 +1285,29 @@ def get_ai_predictions_endpoint():
         stats["live_prediction_by_category"] = calibration["by_category"]
     stats["last_30_days"] = last_30
 
+    by_cat: Dict[str, Any] = {}
+    # alpha-engine strategies: every rule-based prediction is one of these signals, so their
+    # one-year backtests (excess return vs the S&P 500) are the direct evidence behind them
+    for key, bt in (alpha_engine.get_state().get("backtests") or {}).items():
+        if bt.get("n"):
+            by_cat[bt.get("name", key)] = {"accuracy": (bt.get("win_rate") or 0) / 100, "n": bt["n"],
+                                          "avg_excess_pct": bt.get("avg_excess_pct"), "t_stat": bt.get("t_stat"),
+                                          "edge": bool(bt.get("edge")), "basis": "beat_spy"}
     if backtest.get("signals"):
-        stats["by_category"] = _backtest_by_category(backtest)
-        stats["model_improvements"] = [
-            "No resolved live-prediction track record yet (the live grounded predictions above were only just "
-            "wired up). The category breakdown here is the real historical backtest of the underlying insider-buy "
-            "signal - see historical_backtest below for full methodology, sample events, and caveats."
-        ] if not calibration["predictions_resolved"] else [
+        by_cat.update(_backtest_by_category(backtest))
+    if by_cat:
+        stats["by_category"] = by_cat
+        stats["model_improvements"] = ([
             f"{calibration['predictions_resolved']} live prediction(s) resolved against real prices in the last "
-            "30 days - see last_30_days above for real accuracy/calibration. by_category below remains the real "
-            "historical backtest of the underlying insider-buy signal, a separate real measurement."
+            "30 days - see the live column for real accuracy and calibration."
+        ] if calibration["predictions_resolved"] else [
+            "No live prediction has reached its horizon yet, so there is no graded live record. Every open "
+            "prediction is graded automatically against the real price on its target date."
+        ]) + [
+            "By-category figures are real historical backtests of the signals behind the predictions: alpha "
+            "strategies are scored as % of events that beat the S&P 500 over the same window; the Form 4 "
+            "insider-buy study below is scored as % of events with a positive return.",
+            "The Alpha tab carries each strategy's full evidence and a forward paper-trading record.",
         ]
     result["prediction_accuracy_stats"] = stats
     result["historical_backtest"] = backtest

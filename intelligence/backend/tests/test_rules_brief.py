@@ -18,7 +18,7 @@ def test_brief_is_built_from_real_inputs(monkeypatch):
     assert b["mode"] == "rules"
     assert b["top_recommendations"][0]["ticker"] == "NVDA"
     assert b["top_recommendations"][0]["stop"] == "$92.0" and b["top_recommendations"][0]["confidence"] == "61%"
-    assert "capitulation" in b["market_regime"] and b["primary_catalyst"] == "CPI in 3 day(s)"
+    assert "capitulation" in b["market_regime"] and b["primary_catalyst"] == "CPI in 3 days"
     assert all(isinstance(p["data_sources"], list) for p in b["event_driven_plays"])
 
 

@@ -45,16 +45,20 @@ STRATEGIES: Dict[str, Dict[str, Any]] = {
         "name": "Post-earnings drift",
         "thesis": "Big earnings beats keep drifting up for weeks because the market under-reacts on day one.",
         "rules": "EPS beat consensus by >= 10% (consensus >= $0.05), market cap >= $2B, and the stock closed "
-                 "up on the reaction day. Enter that close, exit 20 trading days later.",
-        "hold_days": 20,
+                 "up at least 3% on the reaction day — the market confirming the beat. Enter that close, exit "
+                 "40 trading days later.",
+        "hold_days": 40,
+        "min_surprise": 10, "min_reaction": 3.0,
     },
     "earnings_runup": {
         "name": "Earnings run-up (buy the rumor)",
         "thesis": "Anticipation builds into a report; the move before the numbers is often better than the "
                   "move after them.",
-        "rules": "Market cap >= $10B. Enter the close 10 trading days before the report, exit at the last "
-                 "close before the release (the report day itself when it reports after the close).",
+        "rules": "Market cap >= $10B and the stock above its 50-day average (an existing uptrend). Enter the "
+                 "close 10 trading days before the report, exit at the last close before the release (the "
+                 "report day itself when it reports after the close) — never hold through the numbers.",
         "hold_days": 9,
+        "lead": 10, "trend": True,
     },
     "fear_rebound": {
         "name": "Extreme-fear rebound",
@@ -66,6 +70,9 @@ STRATEGIES: Dict[str, Dict[str, Any]] = {
 }
 
 MIN_SAMPLE = 20  # fewer events than this and we don't call anything an edge
+# How the PEAD and run-up parameters were chosen: .github/scripts/explore_alpha.py replays a small grid of
+# economically motivated variants on real data, and a variant is only adopted if its excess return is
+# positive in both halves of the year, not just on average. summarize() applies the same stability test.
 
 _state: Dict[str, Any] = {"signals": [], "backtests": {}, "generated_at": None, "backtested_at": None,
                           "status": "not_started", "errors": {}}
@@ -148,10 +155,16 @@ def summarize(events: List[Dict[str, Any]]) -> Dict[str, Any]:
     mean_ex = statistics.fmean(ex)
     sd = statistics.stdev(ex) if n > 1 else 0.0
     t = mean_ex / (sd / math.sqrt(n)) if sd > 0 else 0.0
+    ordered = [e["excess_pct"] for e in sorted(events, key=lambda e: e.get("event_date") or "")]
+    halves = (ordered[: n // 2], ordered[n // 2:]) if n >= 2 else ([], ordered)
+    half_means = [round(statistics.fmean(h), 2) if h else None for h in halves]
+    stable = all(m is not None and m > 0 for m in half_means)
     if n < MIN_SAMPLE:
         verdict, edge = f"only {n} events — too few to call an edge", False
+    elif t >= 2 and mean_ex > 0 and stable:
+        verdict, edge = "positive edge vs the S&P 500 (t ≥ 2, and positive in both halves of the year)", True
     elif t >= 2 and mean_ex > 0:
-        verdict, edge = "positive edge vs the S&P 500 (statistically significant, t ≥ 2)", True
+        verdict, edge = "significant on average but carried by one half of the year — not treated as an edge", False
     elif mean_ex > 0:
         verdict, edge = "beat the S&P 500 on average, but not significantly", False
     else:
@@ -164,6 +177,9 @@ def summarize(events: List[Dict[str, Any]]) -> Dict[str, Any]:
         "avg_excess_pct": round(mean_ex, 2),
         "median_excess_pct": round(statistics.median(ex), 2),
         "t_stat": round(t, 2),
+        "first_half_excess_pct": half_means[0],
+        "second_half_excess_pct": half_means[1],
+        "stable": stable,
         "best_pct": round(max(raw), 2),
         "worst_pct": round(min(raw), 2),
         "avg_win_pct": round(statistics.fmean([x for x in raw if x > 0]), 2) if any(x > 0 for x in raw) else None,
@@ -214,8 +230,8 @@ def pead_candidate(row, min_surprise: float = 10, min_mcap: float = 2e9) -> bool
             and (row.get("market_cap") or 0) >= min_mcap)
 
 
-def backtest_pead(rows, prices: PriceFn, spy, hold: int = 20, limit: int = 150, min_surprise: float = 10,
-                  min_reaction: float = 0.0, min_mcap: float = 2e9) -> List[Dict[str, Any]]:
+def backtest_pead(rows, prices: PriceFn, spy, hold: int = 40, limit: int = 250, min_surprise: float = 10,
+                  min_reaction: float = 3.0, min_mcap: float = 2e9) -> List[Dict[str, Any]]:
     cands = sorted([r for r in rows if pead_candidate(r, min_surprise, min_mcap)],
                    key=lambda r: -(r.get("market_cap") or 0))[:limit]
     out = []
@@ -249,8 +265,8 @@ def _above_ma(bars, i: int, n: int = 50) -> bool:
     return bars[i]["close"] > sum(b["close"] for b in bars[i - n:i]) / n
 
 
-def backtest_runup(rows, prices: PriceFn, spy, limit: int = 150, lead: int = 10, min_mcap: float = 10e9,
-                   trend: bool = False) -> List[Dict[str, Any]]:
+def backtest_runup(rows, prices: PriceFn, spy, limit: int = 250, lead: int = 10, min_mcap: float = 10e9,
+                   trend: bool = True) -> List[Dict[str, Any]]:
     cands = sorted([r for r in rows if (r.get("market_cap") or 0) >= min_mcap and r.get("eps_actual") is not None],
                    key=lambda r: -(r.get("market_cap") or 0))[:limit]
     out = []
@@ -300,7 +316,8 @@ def _signal(strategy: str, ticker: str, bars, event_date: str, exit_date: str, r
     stop = round(entry - 2 * a, 2)
     exp_move = (backtest or {}).get("avg_win_pct") or 8.0
     target = round(entry * (1 + exp_move / 100), 2)
-    proven = bool(backtest and backtest.get("n", 0) >= MIN_SAMPLE)
+    # a win rate is only quoted as confidence when the backtest shows a significant edge
+    proven = bool(backtest and backtest.get("edge"))
     return {
         "key": f"{strategy}:{ticker}:{event_date}",
         "strategy": strategy,
@@ -315,10 +332,19 @@ def _signal(strategy: str, ticker: str, bars, event_date: str, exit_date: str, r
         "exit_date": exit_date,
         "risk_reward": round((target - entry) / (entry - stop), 2) if entry > stop else None,
         "confidence": backtest.get("win_rate") if proven else None,
-        "backtest_edge": bool(backtest and backtest.get("edge")),
+        "backtest_edge": proven,
+        "tier": "trade" if proven else "watch",
         "reason": reason,
         **(extra or {}),
     }
+
+
+RUNUP_SCAN = 25   # largest reporters checked for a beat record
+WATCH_CAP = 6     # max signals per strategy that has no proven edge
+
+
+def _money(v) -> str:
+    return "n/a" if v is None else f"{'-' if v < 0 else ''}${abs(v):,.2f}"
 
 
 def live_signals(prices: PriceFn, backtests: Dict[str, Dict[str, Any]], today: Optional[date] = None,
@@ -350,30 +376,33 @@ def live_signals(prices: PriceFn, backtests: Dict[str, Dict[str, Any]], today: O
         if not bars:
             continue
         i = _reaction_index(bars, r)
-        if i is None or i < 1 or bars[i]["close"] <= bars[i - 1]["close"]:
+        min_react = STRATEGIES["pead"]["min_reaction"]
+        if i is None or i < 1 or bars[i]["close"] <= bars[i - 1]["close"] * (1 + min_react / 100):
             continue
         s = _signal("pead", r["symbol"], bars, r["date"],
                     add_trading_days(date.fromisoformat(bars[i]["date"]), STRATEGIES["pead"]["hold_days"]).isoformat(),
-                    f"EPS {r.get('eps_actual')} vs {r.get('eps_forecast')} expected (+{r['surprise_pct']:.0f}% surprise) "
+                    f"EPS {_money(r.get('eps_actual'))} vs {_money(r.get('eps_forecast'))} expected (+{r['surprise_pct']:.0f}% surprise) "
                     f"and the stock closed up {100 * (bars[i]['close'] / bars[i - 1]['close'] - 1):.1f}% on the reaction day",
                     backtests.get("pead"), {"company": r.get("name")})
         if s:
             sigs.append(s)
 
-    # earnings run-up: large caps reporting 8-12 trading days out, with a clean beat record
+    # earnings run-up: large caps in an uptrend, reporting 8-12 trading days out (the backtested rule);
+    # the recent beat record is shown for context but is not part of the rule
     window = [r for r in upcoming_rows or [] if (r.get("market_cap") or 0) >= 10e9]
     window = [r for r in window if 8 <= _trading_days_between(today, date.fromisoformat(r["date"])) <= 12]
-    for r in sorted(window, key=lambda r: -(r.get("market_cap") or 0))[:25]:
+    for r in sorted(window, key=lambda r: -(r.get("market_cap") or 0))[:RUNUP_SCAN]:
+        bars = prices(r["symbol"])
+        if not bars or (STRATEGIES["earnings_runup"]["trend"] and not _above_ma(bars, len(bars) - 1)):
+            continue
         hist = surprises(r["symbol"])
         beats = sum(1 for h in hist if (h.get("surprise_pct") or 0) > 0)
-        if len(hist) < 3 or beats < 3:
-            continue
-        bars = prices(r["symbol"])
+        record = f" Beat consensus in {beats} of the last {len(hist)} quarters." if hist else ""
         report = date.fromisoformat(r["date"])
         exit_day = report if r.get("time") == "after" else _prev_weekday(report)
+        when = "after close" if r.get("time") == "after" else "pre-market" if r.get("time") == "pre" else "time TBA"
         s = _signal("earnings_runup", r["symbol"], bars, r["date"], exit_day.isoformat(),
-                    f"Reports {r['date']} ({'after close' if r.get('time') == 'after' else 'pre-market' if r.get('time') == 'pre' else 'time TBA'}); "
-                    f"beat consensus in {beats} of the last {len(hist)} quarters. Exit before the release.",
+                    f"Reports {r['date']} ({when}); trading above its 50-day average.{record} Exit before the release.",
                     backtests.get("earnings_runup"), {"company": r.get("name")})
         if s:
             sigs.append(s)
@@ -387,8 +416,14 @@ def live_signals(prices: PriceFn, backtests: Dict[str, Dict[str, Any]], today: O
         if s:
             sigs.append(s)
 
-    # proven edges first, then by confidence
-    return sorted(sigs, key=lambda s: (not s["backtest_edge"], -(s["confidence"] or 0)))
+    # proven edges first, then by confidence; unproven strategies are capped so they don't flood the list
+    sigs = sorted(sigs, key=lambda s: (not s["backtest_edge"], -(s["confidence"] or 0)))
+    kept, per = [], {}
+    for s in sigs:
+        per[s["strategy"]] = per.get(s["strategy"], 0) + 1
+        if s["backtest_edge"] or per[s["strategy"]] <= WATCH_CAP:
+            kept.append(s)
+    return kept
 
 
 def _trading_days_between(a: date, b: date) -> int:

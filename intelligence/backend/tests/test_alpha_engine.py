@@ -84,17 +84,42 @@ def test_live_signals_and_levels():
     assert ae.live_signals(lambda t: stock, bt, today, clusters=stale) == []
 
 
-def test_runup_signal_requires_beat_history():
+def test_runup_signal_requires_uptrend():
     today = date(2026, 3, 2)
-    stock = bars("2025-11-03", [100.0] * 85)
+    rising = bars("2025-11-03", [100.0 + 0.2 * i for i in range(85)])
+    falling = bars("2025-11-03", [100.0 - 0.2 * i for i in range(85)])
     report = ae.add_trading_days(today, 10).isoformat()
     rows = [{"symbol": "BIG", "name": "Big Co", "date": report, "time": "after", "market_cap": 50e9}]
-    good = lambda t: [{"surprise_pct": 5}, {"surprise_pct": 2}, {"surprise_pct": 1}, {"surprise_pct": -1}]
-    bad = lambda t: [{"surprise_pct": 5}, {"surprise_pct": -2}, {"surprise_pct": -1}, {"surprise_pct": -1}]
-    sig = ae.live_signals(lambda t: stock, {}, today, upcoming_rows=rows, surprises=good)
+    beats = lambda t: [{"surprise_pct": 5}, {"surprise_pct": 2}, {"surprise_pct": 1}, {"surprise_pct": -1}]
+    sig = ae.live_signals(lambda t: rising, {}, today, upcoming_rows=rows, surprises=beats)
     assert [s["ticker"] for s in sig] == ["BIG"] and sig[0]["exit_date"] == report
+    assert "3 of the last 4" in sig[0]["reason"]
     assert sig[0]["confidence"] is None  # no proven backtest yet -> no confidence claimed
-    assert ae.live_signals(lambda t: stock, {}, today, upcoming_rows=rows, surprises=bad) == []
+    assert ae.live_signals(lambda t: falling, {}, today, upcoming_rows=rows, surprises=beats) == []
+
+
+def test_edge_needs_both_halves_positive():
+    def ev(i, x):
+        return {"event_date": f"2026-{1 + i // 28:02d}-{1 + i % 28:02d}", "excess_pct": x, "return_pct": x}
+    steady = [ev(i, 2.0 + (i % 3)) for i in range(40)]
+    lopsided = [ev(i, 9.0 + (i % 3)) for i in range(20)] + [ev(20 + i, -1.0 + (i % 3) * 0.5) for i in range(20)]
+    a, b = ae.summarize(steady), ae.summarize(lopsided)
+    assert a["edge"] and a["stable"]
+    assert b["t_stat"] >= 2 and not b["stable"] and not b["edge"] and "one half" in b["verdict"]
+
+
+def test_unproven_strategies_are_capped_and_unrated():
+    today = date(2026, 3, 2)
+    stock = bars("2025-11-03", [100.0 + 0.2 * i for i in range(85)])
+    report = ae.add_trading_days(today, 10).isoformat()
+    rows = [{"symbol": f"T{i}", "date": report, "time": "pre", "market_cap": 50e9 + i} for i in range(12)]
+    beats = lambda t: [{"surprise_pct": 5}] * 4
+    weak = {"earnings_runup": {"n": 150, "win_rate": 56.7, "edge": False}}
+    sig = ae.live_signals(lambda t: stock, weak, today, upcoming_rows=rows, surprises=beats)
+    assert len(sig) == ae.WATCH_CAP and all(s["confidence"] is None and s["tier"] == "watch" for s in sig)
+    proven = {"earnings_runup": {"n": 150, "win_rate": 60.0, "edge": True}}
+    sig = ae.live_signals(lambda t: stock, proven, today, upcoming_rows=rows, surprises=beats)
+    assert len(sig) == 12 and all(s["confidence"] == 60.0 and s["tier"] == "trade" for s in sig)
 
 
 def test_paper_positions_close_on_stop_or_time():
